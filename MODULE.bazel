@@ -14,7 +14,7 @@ bazel_dep(name = "rules_foreign_cc", version = "0.16.0")
 bazel_dep(name = "rules_gzip", version = "1.0.0")
 bazel_dep(name = "rules_pkg", version = "1.1.0")
 bazel_dep(name = "rules_python", version = "1.9.0")
-bazel_dep(name = "sonic-build-infra", version = "0.0.16-4429ada56a20a9d9cb01369271766991974472bb", repo_name = "sonic_build_infra")
+bazel_dep(name = "sonic-build-infra", version = "0.0.17-1f3e526a29e5fc391b42b11925a41889a44aa7a0", repo_name = "sonic_build_infra")
 bazel_dep(name = "tar.bzl", version = "0.10.5-sonic.1")
 
 single_version_override(
@@ -91,3 +91,26 @@ git_override(
     commit = "38ff19ef6e0216bef4cc7e1b15d0cffe0701794e",
     remote = "https://github.com/securely1g/sonic-build-infra.git",
 )
+apt.install(
+    dependency_set = "krb5_deps",
+    packages = [
+        "comerr-dev",
+        "libcmocka-dev",
+        "libkeyutils-dev",
+        "libldap-dev",
+        "liblmdb-dev",
+        "libsasl2-dev",
+        "libverto-dev",
+        "ss-dev",
+    ],
+    suites = [
+        "trixie",
+        "trixie-updates",
+        "trixie-security",
+    ],
+)
+use_repo(apt, "krb5_deps")
+
+krb5_source = use_repo_rule("//krb5:sources.bzl", "krb5_source")
+
+krb5_source(name = "krb5_src")
