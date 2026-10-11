@@ -1,0 +1,81 @@
+name: OpenSSL vendor suite with source-built SymCrypt
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    name: OpenSSL integration (${{ matrix.architecture }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: amd64
+            runner: ubuntu-24.04
+          - architecture: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    container: debian:trixie-20260918@sha256:9cc080028c43b27d2074d63a5f9caf7166d731494965616c1a6d2827a004585c
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Install validation and archive tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends binutils ca-certificates curl gdb git libxml2 patch python3 tar unzip xz-utils zstd
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Draft validation consumes the exact reviewed tool sources. Ordinary
+      # registry selection remains maintained main plus BCR in .bazelrc.
+      - name: Check out the declared build tools and compiler fixes
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: securely1g/sonic-build-infra
+          ref: 1f3e526a29e5fc391b42b11925a41889a44aa7a0
+          path: _ci/infra
+          persist-credentials: false
+      - name: Prepare the reviewed Distroless package imports
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --output "$RUNNER_TEMP/distroless.tar.gz" \
+            https://github.com/bazel-contrib/rules_distroless/releases/download/v0.9.4/rules_distroless-v0.9.4.tar.gz
+          echo "5d43f4f44f0f0fb614194a07a6dcf7b29338cfc8ab7f6129ad1e4403c1ad1c73  $RUNNER_TEMP/distroless.tar.gz" | sha256sum --check --strict
+          mkdir -p "$RUNNER_TEMP/distroless"
+          tar -xzf "$RUNNER_TEMP/distroless.tar.gz" --strip-components=1 -C "$RUNNER_TEMP/distroless"
+          python3 tools/bazel/prepare_distroless.py "$RUNNER_TEMP/distroless" artifacts/openssl-symcrypt
+      - uses: bazel-contrib/setup-bazel@c5acdfb288317d0b5c0bbd7a396a3dc868bb0f86 # 0.19.0
+        with:
+          bazelisk-version: 1.29.0
+          bazelisk-cache: true
+          repository-cache: true
+          disk-cache: openssl-symcrypt-${{ matrix.architecture }}
+          cache-version: "8.5.1"
+      - name: Run the original vendor suite with the declared plugins
+        env:
+          CI_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          test ! -e MODULE.bazel.lock
+          test -z "$(git -c safe.directory="$GITHUB_WORKSPACE" ls-files MODULE.bazel.lock)"
+          git -c safe.directory="$GITHUB_WORKSPACE" check-ignore MODULE.bazel.lock
+          python3 -B -m openssl.integration.ci --architecture '${{ matrix.architecture }}' --artifacts artifacts/openssl-symcrypt \
+            --bazel-arg="--override_module=sonic-build-infra=$GITHUB_WORKSPACE/_ci/infra" \
+            --bazel-arg="--override_module=rules_distroless=$RUNNER_TEMP/distroless"
+          git -c safe.directory="$GITHUB_WORKSPACE" diff --exit-code
+      - name: Upload original suite logs and dependency evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: openssl-symcrypt-${{ matrix.architecture }}
+          path: artifacts/openssl-symcrypt
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 1
