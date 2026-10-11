@@ -9,7 +9,7 @@ module(
 
 bazel_dep(name = "platforms", version = "1.1.0")
 bazel_dep(name = "rules_cc", version = "0.2.20")
-bazel_dep(name = "rules_distroless", version = "0.9.4.sonic.1")
+bazel_dep(name = "rules_distroless", version = "0.9.4.sonic.4")
 bazel_dep(name = "rules_foreign_cc", version = "0.16.0")
 bazel_dep(name = "rules_python", version = "1.9.0")
 bazel_dep(name = "sonic-build-infra", version = "0.0.17-1f3e526a29e5fc391b42b11925a41889a44aa7a0", repo_name = "sonic_build_infra")
@@ -119,3 +119,27 @@ use_repo(
 
 openssh_source = use_repo_rule("//openssh:sources.bzl", "openssh_source")
 openssh_source(name = "openssh_src")
+
+apt.install(
+    dependency_set = "krb5_deps",
+    packages = [
+        "comerr-dev",
+        "libcmocka-dev",
+        "libkeyutils-dev",
+        "libldap-dev",
+        "liblmdb-dev",
+        "libsasl2-dev",
+        "libverto-dev",
+        "ss-dev",
+    ],
+    suites = [
+        "trixie",
+        "trixie-updates",
+        "trixie-security",
+    ],
+)
+use_repo(apt, "krb5_deps")
+
+krb5_source = use_repo_rule("//krb5:sources.bzl", "krb5_source")
+
+krb5_source(name = "krb5_src")
