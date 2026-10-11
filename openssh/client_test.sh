@@ -2,6 +2,8 @@
 # Exercise the newly compiled clients without contacting a server or using keys
 # from the build host. The foreign_cc action supplies declared library paths.
 set -eu
+[ "$#" -eq 1 ]
+receipt=$1
 test_home=$(mktemp -d /tmp/sonic-openssh-test.XXXXXX)
 agent_pid=
 cleanup() {
@@ -13,9 +15,15 @@ cleanup() {
 }
 trap cleanup EXIT HUP INT TERM
 
+# Debian's archive name is 10.0p1, while its pinned version.h says 10.0p2.
+# Compare the executable with the actual patched source header.
+upstream=$(awk '$1 == "#define" && $2 == "SSH_VERSION" {gsub(/"/, "", $3); print $3}' version.h)
+portable=$(awk '$1 == "#define" && $2 == "SSH_PORTABLE" {gsub(/"/, "", $3); print $3}' version.h)
+[ -n "$upstream" ] && [ -n "$portable" ]
+expected_release="$upstream$portable"
 version=$(./ssh -V 2>&1)
 case "$version" in
-    *OpenSSH_10.0p1*Debian-7+fips*"OpenSSL 3.5.7"*) ;;
+    "$expected_release Debian-7+fips, OpenSSL 3.5.7 "*) ;;
     *) echo "Unexpected source/runtime version: $version" >&2; exit 1 ;;
 esac
 printf '%s\n' "$version"
@@ -50,3 +58,4 @@ else
 fi
 kill -0 "$agent_pid"
 echo 'Source OpenSSH client config, cipher query, key generation and private agent passed'
+printf '{"_generated":{"notice":"AUTO-GENERATED. DO NOT EDIT MANUALLY.","generator":"openssh/client_test.sh"},"status":"passed","program_release":"%s","config_cipher_key_and_private_agent":"passed"}\n' "$expected_release" > "$receipt"

@@ -10,7 +10,9 @@ The SONiC recipe selects `10.0p1-7+fips` and submodule revision
 [`10.0p1-7` source description](https://deb.debian.org/debian/pool/main/o/openssh/openssh_10.0p1-7.dsc)
 records that exact revision in its `Dgit` field. The source rule checks this
 record and the SHA-256 hashes of the original source and Debian packaging
-archives. It does not substitute the ordinary Debian runtime package.
+archives. It does not substitute the ordinary Debian runtime package. The archive
+filename uses `10.0p1`, but its pinned `version.h` identifies the program as
+`OpenSSH_10.0p2`; the client smoke test checks that source header.
 
 Apply all 28 Debian patches and the five patches listed in
 `src/openssh.patch/series`. The older
@@ -51,6 +53,8 @@ GDB to locate source lines in `ssh` and `ssh-keygen`.
 `//openssh:upstream_tests_debug` runs the original `unit` and `compat-tests`
 targets, then checks the built clients with a temporary key and a private
 foreground SSH agent. It uses neither an SSH server nor host credentials.
+CI requires its `client-smoke.json` success receipt; a failed directory change
+cannot silently skip the smoke check.
 The test action is excluded from the shared disk/remote cache; CI uses a fresh
 Bazel output base so it executes on each native runner.
 
