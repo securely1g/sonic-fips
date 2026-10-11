@@ -103,13 +103,27 @@ pyelftools_source(name = "symcrypt_pyelftools")
 apt.install(
     dependency_set = "openssh_deps",
     packages = [
-        "libaudit-dev", "libcbor-dev", "libcrypt-dev", "libedit-dev",
-        "libfido2-dev", "libkrb5-dev", "libpam0g-dev", "libselinux1-dev",
-        "libudev-dev", "libwrap0-dev", "libwtmpdb-dev", "zlib1g-dev",
+        "libaudit-dev",
+        "libcbor-dev",
+        "libcrypt-dev",
+        "libedit-dev",
+        "libfido2-dev",
+        "libkrb5-dev",
+        "libpam0g-dev",
+        "libselinux1-dev",
+        "libudev-dev",
+        "libwrap0-dev",
+        "libwtmpdb-dev",
+        "zlib1g-dev",
     ],
-    suites = ["trixie", "trixie-updates", "trixie-security"],
+    suites = [
+        "trixie",
+        "trixie-updates",
+        "trixie-security",
+    ],
 )
 use_repo(apt, "openssh_deps")
+
 # Select the pinned package's direct CcInfo so source OpenSSL supplies crypto.
 use_repo(
     apt,
@@ -118,6 +132,7 @@ use_repo(
 )
 
 openssh_source = use_repo_rule("//openssh:sources.bzl", "openssh_source")
+
 openssh_source(name = "openssh_src")
 
 apt.install(
