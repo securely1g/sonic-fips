@@ -1,5 +1,10 @@
 # OpenSSH source contract
 
+Configure uses the declared compiler and its system-header flags for both C
+compilation and preprocessor probes. Native CI starts without a generated Bazel
+lock and retains the regenerated lock, resolved graph and input hashes before
+the upstream and package tests.
+
 The SONiC recipe selects `10.0p1-7+fips` and submodule revision
 `53e29c05c14ec5f29dbd3df5466b55cf4ca488b1`. The official Debian
 [`10.0p1-7` source description](https://deb.debian.org/debian/pool/main/o/openssh/openssh_10.0p1-7.dsc)
