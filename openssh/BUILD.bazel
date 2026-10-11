@@ -34,7 +34,7 @@ _BUILD_ENV = {
     name = name,
     targets = targets,
     tags = ["manual", "no-cache"] if name == "upstream_tests" else [],
-    postfix_script = "cd $$BUILD_TMPDIR$$ && /bin/sh $$EXT_BUILD_ROOT$$/$(execpath :client_test.sh)" if name == "upstream_tests" else "",
+    postfix_script = "cd \"$${BUILD_TMPDIR}\" && /bin/sh $$EXT_BUILD_ROOT$$/$(execpath :client_test.sh)" if name == "upstream_tests" else "",
     lib_source = "@openssh_src//:sources",
     configure_command = "bazel-configure",
     configure_in_place = True,
