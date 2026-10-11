@@ -2,6 +2,8 @@ load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 load("@sonic_build_infra//binary:keep_debug_info.bzl", "keep_debug_info")
 load("@sonic_build_infra//tar:sonic_deploy_tar.bzl", "sonic_deploy_tar")
+load("@tar.bzl//tar:mtree.bzl", "mtree_mutate", "mtree_spec")
+load("@tar.bzl//tar:tar.bzl", "tar")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -214,6 +216,58 @@ sonic_deploy_tar(
     visibility = ["//visibility:public"],
 )
 
+# Reuse the runtime build's complete install tree. The development archive
+# contains static libraries, but adding it must not change build's CcInfo to
+# prefer static linking for existing consumers.
+filegroup(
+    name = "installed_tree",
+    srcs = [":build"],
+    output_group = "gen_dir",
+)
+
+keep_debug_info(
+    name = "packaged_installed_tree",
+    src = ":installed_tree",
+)
+
+_DEV_INPUTS = [
+    ":packaged_installed_tree",
+    "@openssl_src//:debian/copyright",
+]
+
+mtree_spec(
+    name = "development_files",
+    srcs = _DEV_INPUTS,
+    include_runfiles = False,
+)
+
+mtree_mutate(
+    name = "development_layout",
+    awk_script = "development_layout.awk",
+    mtime = "1787585182",
+    mtree = ":development_files",
+    owner = "0",
+    ownername = "root",
+    script_args = select({
+        "@platforms//cpu:x86_64": {
+            "multiarch": "x86_64-linux-gnu",
+            "group": "0",
+            "groupname": "root",
+        },
+        "@platforms//cpu:aarch64": {
+            "multiarch": "aarch64-linux-gnu",
+            "group": "0",
+            "groupname": "root",
+        },
+    }),
+)
+
+tar(
+    name = "libssl_dev_pkg",
+    srcs = _DEV_INPUTS,
+    mtree = ":development_layout",
+)
+
 py_library(
     name = "package_test_utils",
     testonly = True,
@@ -228,10 +282,12 @@ py_test(
         "openssl_pkg",
         "libssl3t64_pkg.debug_symbols",
         "openssl_pkg.debug_symbols",
+        "libssl_dev_pkg",
     ]],
     data = [
         ":libssl3t64_pkg",
         ":libssl3t64_pkg.debug_symbols",
+        ":libssl_dev_pkg",
         ":openssl_pkg",
         ":openssl_pkg.debug_symbols",
     ],

@@ -17,6 +17,7 @@ TARGETS = [
     "//openssl:openssl_pkg",
     "//openssl:libssl3t64_pkg.debug_symbols",
     "//openssl:openssl_pkg.debug_symbols",
+    "//openssl:libssl_dev_pkg",
 ]
 
 

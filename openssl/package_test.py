@@ -5,6 +5,7 @@ import os
 from pathlib import Path, PurePosixPath
 import platform
 import re
+import shlex
 import struct
 import subprocess
 import sys
@@ -75,8 +76,73 @@ def check_gdb(binary, symbols, function, source):
     assert re.search(r"Line [0-9]+ of .*" + re.escape(source), output), output
 
 
+def check_development(archive, root, multiarch, scratch):
+    """Compile a consumer against installed headers and both library formats."""
+    entries = unpack_files(archive, root)
+    for name, member in entries.items():
+        assert (member.uid, member.gid) == (0, 0), (name, member.uid, member.gid)
+        assert member.mtime == 1787585182, (name, member.mtime)
+        if member.isfile():
+            assert member.mode == 0o644, (name, member.mode)
+        assert not name.endswith(".so.3"), name
+        if member.issym():
+            assert name in {f"usr/lib/{multiarch}/lib{lib}.so" for lib in ["ssl", "crypto"]}
+            assert member.linkname == Path(name).name + ".3", (name, member.linkname)
+            target = root / name
+            assert (target.parent / member.linkname).is_file(), target
+            target.symlink_to(member.linkname)
+    for name in ["configuration.h", "opensslconf.h"]:
+        assert (root / "usr/include" / multiarch / "openssl" / name).is_file()
+        assert not (root / "usr/include/openssl" / name).exists()
+    libdir = root / "usr/lib" / multiarch
+    for name in ["libssl", "libcrypto", "openssl"]:
+        text = (libdir / "pkgconfig" / (name + ".pc")).read_text()
+        assert "Version: 3.5.7" in text, text
+        assert not any(value in text for value in ["bazel-out", "execroot", "build_tmpdir"]), text
+    for name in ["OpenSSLConfig.cmake", "OpenSSLConfigVersion.cmake"]:
+        assert (libdir / "cmake/OpenSSL" / name).is_file()
+    environment = dict(os.environ, PKG_CONFIG_SYSROOT_DIR=str(root),
+                       PKG_CONFIG_LIBDIR=str(libdir / "pkgconfig"), PKG_CONFIG_PATH="")
+    cflags = shlex.split(run("pkg-config", "--cflags", "openssl", env=environment))
+    libraries = shlex.split(run("pkg-config", "--libs", "openssl", env=environment))
+    source = scratch / "installed_consumer.c"
+    source.write_text('''#include <openssl/evp.h>
+#include <openssl/ssl.h>
+#include <stdio.h>
+#include <string.h>
+int main(void) {
+    unsigned char digest[EVP_MAX_MD_SIZE]; unsigned int length = 0;
+    SSL_CTX *ctx = SSL_CTX_new(TLS_method());
+    if (!ctx || !EVP_Digest("abc", 3, digest, &length, EVP_sha256(), NULL)) return 1;
+    SSL_CTX_free(ctx);
+    if (length != 32 || digest[0] != 0xba || digest[31] != 0xad) return 2;
+    puts(OpenSSL_version(OPENSSL_VERSION));
+    return strstr(OpenSSL_version(OPENSSL_VERSION), "OpenSSL 3.5.7") ? 0 : 3;
+}
+''')
+    for linkage in ["shared", "static"]:
+        consumer = scratch / ("consumer_" + linkage)
+        dependencies = scratch / (linkage + ".d")
+        links = libraries if linkage == "shared" else [
+            str(libdir / "libssl.a"), str(libdir / "libcrypto.a"),
+            "-lzstd", "-lz", "-ldl", "-pthread",
+        ]
+        # GCC here is an explicit native CI test prerequisite. Artifact builds
+        # continue to use the Bazel toolchain; this checks their installed SDK.
+        run("gcc", "-Werror", *cflags, "-I" + str(root / "usr/include" / multiarch),
+            "-MD", "-MF", str(dependencies), str(source), "-o", str(consumer),
+            "-Wl,-rpath," + str(libdir), *links, env=environment)
+        headers = [name for name in dependencies.read_text().replace("\\\n", "").split()
+                   if "/openssl/" in name]
+        assert headers and all(name.startswith(str(root) + "/") for name in headers), headers
+        assert "OpenSSL 3.5.7" in run(str(consumer), env=dict(environment, LD_LIBRARY_PATH=str(libdir)))
+        dynamic = run("readelf", "-d", str(consumer))
+        assert ("libcrypto.so.3" in dynamic) == (linkage == "shared"), dynamic
+    print("Installed development package: multiarch headers, shared and static consumers passed")
+
+
 def main():
-    assert len(sys.argv) == 5
+    assert len(sys.argv) == 6
     multiarch = {"x86_64": "x86_64-linux-gnu", "aarch64": "aarch64-linux-gnu"}[platform.machine()]
     with tempfile.TemporaryDirectory(dir=os.environ.get("TEST_TMPDIR")) as temporary:
         root = Path(temporary) / "root"
@@ -117,6 +183,7 @@ def main():
             *[str(library_dir / name) for name in names], env=environment)
         check_gdb(command, symbols, "main", "apps/openssl.c")
         check_gdb(library_dir / "libcrypto.so.3", symbols, "OPENSSL_init_crypto", "crypto/init.c")
+        check_development(sys.argv[5], root, multiarch, Path(temporary))
         print(f"Installed OpenSSL 3.5.7: {len(names) + 1} runtime/debug pairs, CLI digest, library loading and GDB passed")
 
 

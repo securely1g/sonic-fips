@@ -40,11 +40,19 @@ x86 PadLock engine, as Debian's build does.
 | `//openssl:libssl3t64_pkg.debug_symbols` | Matching DWARF symbols for those exact libraries |
 | `//openssl:openssl_pkg` | The OpenSSL command, helper scripts and runtime configuration |
 | `//openssl:openssl_pkg.debug_symbols` | Matching symbols for the command |
+| `//openssl:libssl_dev_pkg` | Headers, static libraries, linker symlinks, pkg-config and CMake metadata used in the base container |
 
 Runtime ELF files are stripped through the shared `sonic_deploy_tar` rule;
 separate symbols use the same build IDs. Engine plugins are additional build
 outputs, so linking a C/C++ consumer does not link every plugin into it.
 These targets do not produce Debian packages or install documentation packages.
+
+The development archive reuses that same build's install tree and Debian's
+`libssl-dev.install` file selection. As in Debian's `debian/rules`, its two
+configuration headers move to `/usr/include/<multiarch>/openssl` so different
+architectures can coexist. It does not change the SDK's C/C++ linking preference
+or duplicate the runtime shared libraries. Its static archives retain the
+source build's debug information; runtime ELF symbols remain separate.
 
 The SONiC mode-selection behavior and SymCrypt integration remain the original
 project code. These build targets alone do not establish FIPS certification;
@@ -55,6 +63,9 @@ work.
 
 `//openssl:package_test` checks the installed command, library loading, runtime
 paths, matching build IDs and debug-link checksums, and GDB source lookup.
+It also compiles and runs small shared and static consumers using the installed
+development archive. GCC, pkg-config and zlib/zstd development files are explicit
+native test prerequisites; producer compilation still uses the Bazel toolchain.
 
 Each native CI job starts without a Bazel lockfile, generates it in update mode,
 and uploads it with the resolved module graph and hashes of the declared inputs.
