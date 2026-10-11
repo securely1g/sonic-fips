@@ -37,6 +37,11 @@ compiler packaging patches are not claimed to be identical. The standard
 the existing declared SONiC GNU tools (Binutils 2.46.0.20260210 in this toolchain). The OpenSSL engine/provider retain native
 GCC and consume OpenSSL's declared generated headers and shared libraries.
 
+The small `toolchain.bzl` extension calls upstream's public `llvm_toolchain`
+macro because upstream's own module extension accepts only a root module. This
+keeps the same maintained compiler implementation usable when an image consumes
+`sonic-fips` as a dependency, without registering LLVM for other components.
+
 Clang uses the same pinned Debian sysroot as SONiC's GCC toolchain, including the
 GCC development-library runtime dependencies. The core preserves upstream's
 warning policy by removing LLVM's additional `-Wall`, `-Wthread-safety`, and
@@ -59,6 +64,10 @@ integrity digest. The sealed `libsymcrypt.so.103.13.0` enters the TAR as unchang
 data: it receives no later stripping, RPATH editing or debuglink insertion. Its
 original debug file is installed by build ID, which GNU GDB can discover directly.
 The engine and provider use the shared normal split-debug packaging rules.
+`runtime` publishes all three symbol trees through the shared `DebugSymbolsInfo`
+provider. Its `runtime.debug_symbols` target uses the standard OCI
+`debug_symbols_layer`, so downstream images collect the core symbols through the
+same API as other native libraries.
 
 Upstream generates a random, nonsecret integrity key and records build time. A
 clean rebuild need not produce identical module bytes. The test instead requires
@@ -74,6 +83,8 @@ Native AMD64 and ARM64 CI retains runtime/debug TARs, their hashes, the module
 graph and lock, compiler commands, CMake settings and build logs. The test also
 runs the original full SymCrypt unit-test executable, an explicit provider SHA256
 operation and engine loading plus SHA256 through source-built OpenSSL.
+CI also analyzes the complete package-test graph from `tests/consumer`, a separate
+downstream module, to reject compiler extensions that only work at the source root.
 
 The component test uses `OPENSSL_CONF=/dev/null` so it selects the installed
 engine/provider explicitly. Automatic activation through the final SONiC FIPS

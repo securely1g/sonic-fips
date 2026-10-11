@@ -65,7 +65,8 @@ def main():
         identifier = build_id(core)
         debug = symbols / "usr/lib/debug/.build-id" / identifier[:2] / (identifier[2:] + ".debug")
         assert debug.is_file() and build_id(debug) == identifier
-        assert debug_entries[str(debug.relative_to(symbols))].mode == 0o644
+        # Shared debug tree packaging uses the paired ELF executable mode.
+        assert debug_entries[str(debug.relative_to(symbols))].mode == 0o755
         assert ".debug_info" in run("readelf", "-SW", str(debug))
         sections = run("readelf", "-SW", str(core))
         assert ".debug_info" not in sections and ".gnu_debuglink" not in sections

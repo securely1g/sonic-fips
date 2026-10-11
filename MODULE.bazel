@@ -71,22 +71,7 @@ use_repo(sysroots, "symcrypt_sysroot_amd64", "symcrypt_sysroot_arm64")
 
 # Core SymCrypt explicitly chooses Clang in the native recipe. Do not register
 # it globally: its cmake_variant target selects this toolchain locally.
-llvm = use_extension("@toolchains_llvm//toolchain/extensions:llvm.bzl", "llvm")
-llvm.toolchain(
-    name = "symcrypt_llvm",
-    llvm_version = "19.1.7",
-    stdlib = {"": "dynamic-stdc++-14"},
-)
-llvm.sysroot(
-    name = "symcrypt_llvm",
-    label = "@symcrypt_sysroot_amd64//root:sysroot",
-    targets = ["linux-x86_64"],
-)
-llvm.sysroot(
-    name = "symcrypt_llvm",
-    label = "@symcrypt_sysroot_arm64//root:sysroot",
-    targets = ["linux-aarch64"],
-)
+llvm = use_extension("//symcrypt:toolchain.bzl", "clang")
 use_repo(llvm, "symcrypt_llvm")
 
 symcrypt_source = use_repo_rule("//symcrypt:sources.bzl", "symcrypt_source")

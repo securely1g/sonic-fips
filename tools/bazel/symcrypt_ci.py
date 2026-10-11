@@ -29,6 +29,17 @@ def main():
         subprocess.run(["bazel", "aquery", "deps(//symcrypt:package_test)", *flags,
                         "--include_file_write_contents", "--output=jsonproto"], stdout=stdout, stderr=stderr, check=True)
     (output / "audit.json").write_text(json.dumps(audit(json.loads((output / "actions.json").read_text())), indent=2) + "\n")
+    # Also analyze the real public package test from a downstream module. This
+    # catches extensions that work only when sonic-fips is the workspace root.
+    consumer = Path("symcrypt/tests/consumer")
+    with (output / "consumer-actions.json").open("w") as stdout, (output / "consumer-audit.log").open("w") as stderr:
+        subprocess.run(["bazel", "--output_base=" + str(output.parent / (output.name + "-consumer-bazel")),
+                        "aquery", "deps(@sonic_fips//symcrypt:package_test)", *flags,
+                        "--include_file_write_contents", "--output=jsonproto"],
+                       cwd=consumer, stdout=stdout, stderr=stderr, check=True)
+    (output / "consumer-audit.json").write_text(json.dumps(audit(json.loads((output / "consumer-actions.json").read_text())), indent=2) + "\n")
+    shutil.copyfile(consumer / "MODULE.bazel", output / "consumer.MODULE.bazel")
+    shutil.copyfile(consumer / "MODULE.bazel.lock", output / "consumer.MODULE.bazel.lock")
     retain_resolution(output, args.architecture, args.bazel_arg)
     command(["bazel", "test", "//symcrypt:package_test", *flags, "--test_output=errors", "--nocache_test_results",
              "--build_event_json_file=" + str(output / "events.json")], output / "test.log")
