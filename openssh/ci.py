@@ -61,6 +61,11 @@ def main():
         command(["bazel", "build", "//openssh:upstream_tests_debug", *flags,
                  "--build_event_json_file=" + str(output / "upstream-events.json")],
                 output / "upstream-test.log")
+        test_tree = subprocess.check_output(["bazel", "cquery", "//openssh:upstream_tests_debug", *flags, "--output=files"], text=True).strip()
+        smoke = json.loads((Path(test_tree) / "client-smoke.json").read_text())
+        if smoke.get("status") != "passed" or smoke.get("config_cipher_key_and_private_agent") != "passed":
+            raise SystemExit("Missing successful private-client smoke receipt")
+        write_json(output / "client-smoke.json", smoke)
         command(["bazel", "test", "//openssh:package_test", *flags, "--test_output=errors",
                  "--nocache_test_results", "--build_event_json_file=" + str(output / "package-events.json")],
                 output / "package-test.log")
