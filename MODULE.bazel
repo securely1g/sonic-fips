@@ -54,3 +54,27 @@ use_repo(apt, "openssl_deps")
 openssl_source = use_repo_rule("//openssl:sources.bzl", "openssl_source")
 
 openssl_source(name = "openssl_src")
+
+apt.install(
+    dependency_set = "krb5_deps",
+    packages = [
+        "comerr-dev",
+        "libcmocka-dev",
+        "libkeyutils-dev",
+        "libldap-dev",
+        "liblmdb-dev",
+        "libsasl2-dev",
+        "libverto-dev",
+        "ss-dev",
+    ],
+    suites = [
+        "trixie",
+        "trixie-updates",
+        "trixie-security",
+    ],
+)
+use_repo(apt, "krb5_deps")
+
+krb5_source = use_repo_rule("//krb5:sources.bzl", "krb5_source")
+
+krb5_source(name = "krb5_src")
