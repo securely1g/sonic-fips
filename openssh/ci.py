@@ -22,12 +22,12 @@ def write_json(path, value):
 
 def retain_logs(output):
     """Keep the source commands and test logs, including failed configure actions."""
-    result = subprocess.run(["bazel", "info", "output_base"], text=True, capture_output=True)
-    if result.returncode:
-        return
-    base = Path(result.stdout.strip())
+    # The same Bazel output symlink is used by the cquery package paths below.
+    # Avoid a second configuration-less `bazel info` invocation: it cannot
+    # resolve draft module overrides and root-repository platform aliases.
+    base = Path("bazel-out").resolve()
     for component in ("openssh", "openssl"):
-        for path in base.glob(f"execroot/*/bazel-out/*/bin/{component}/*_foreign_cc/*"):
+        for path in base.glob(f"*/bin/{component}/*_foreign_cc/*"):
             if path.is_file() and path.name in ("Configure.log", "build_script.sh", "wrapper_build_script.sh"):
                 destination = output / "source-logs" / path.relative_to(base)
                 destination.parent.mkdir(parents=True, exist_ok=True)
@@ -76,8 +76,7 @@ def main():
         source = subprocess.check_output(["bazel", "cquery", "@openssh_src//:source.json", *flags, "--output=files"], text=True).strip()
         source_path = Path(source)
         if not source_path.is_file():
-            execution_root = subprocess.check_output(["bazel", "info", "execution_root"], text=True).strip()
-            source_path = Path(execution_root) / source_path
+            source_path = Path("bazel-out").resolve().parent / source_path
         shutil.copyfile(source_path, output / "source.json")
         git = ["git", "-c", "safe.directory=" + str(Path.cwd())]
         checkout = subprocess.check_output([*git, "rev-parse", "HEAD"], text=True).strip()
