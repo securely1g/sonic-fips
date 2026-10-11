@@ -63,6 +63,9 @@ jobs:
         env:
           CI_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
+          test ! -e MODULE.bazel.lock
+          test -z "$(git ls-files MODULE.bazel.lock)"
+          git check-ignore MODULE.bazel.lock
           python3 -B tools/bazel/ci.py --architecture '${{ matrix.architecture }}' --artifacts artifacts/openssl \
             --bazel-arg="--override_module=sonic-build-infra=$GITHUB_WORKSPACE/_ci/infra" \
             --bazel-arg="--override_module=rules_distroless=$RUNNER_TEMP/distroless"

@@ -27,6 +27,30 @@ def command(args, log):
         raise SystemExit(f"Command failed ({result.returncode}); see {log}")
 
 
+def retain_resolution(output, architecture, bazel_args):
+    command(["bazel", "mod", "graph", "--lockfile_mode=update", *bazel_args],
+            output / "module-graph.txt")
+    shutil.copyfile("MODULE.bazel.lock", output / "MODULE.bazel.lock")
+    inputs = {}
+    for name in ["MODULE.bazel", ".bazelrc", ".bazelversion"]:
+        destination = output / name
+        shutil.copyfile(name, destination)
+        inputs[name] = hashlib.sha256(destination.read_bytes()).hexdigest()
+    generated = {name: hashlib.sha256((output / name).read_bytes()).hexdigest()
+                 for name in ["MODULE.bazel.lock", "module-graph.txt"]}
+    (output / "resolution.json").write_text(json.dumps({
+        "tested_commit": subprocess.check_output(
+            ["git", "-c", "safe.directory=" + str(Path.cwd()), "rev-parse", "HEAD"],
+            text=True).strip(),
+        "pull_request_head": os.environ.get("CI_HEAD_SHA"),
+        "architecture": architecture,
+        "machine": platform.machine(),
+        "bazel_args": bazel_args,
+        "declared_inputs_sha256": inputs,
+        "generated_evidence_sha256": generated,
+    }, indent=2) + "\n")
+
+
 def audit(graph):
     fragments = {item["id"]: item for item in graph["pathFragments"]}
 
@@ -69,6 +93,7 @@ def main():
                        stdout=stdout, stderr=stderr, check=True)
     report = audit(json.loads((output / "actions.json").read_text()))
     (output / "audit.json").write_text(json.dumps(report, indent=2) + "\n")
+    retain_resolution(output, args.architecture, args.bazel_arg)
     command(["bazel", "test", "//openssl:package_test", *flags, "--test_output=errors",
              "--nocache_test_results", "--build_event_json_file=" + str(output / "events.json")],
             output / "test.log")

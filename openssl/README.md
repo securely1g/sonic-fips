@@ -56,6 +56,12 @@ work.
 `//openssl:package_test` checks the installed command, library loading, runtime
 paths, matching build IDs and debug-link checksums, and GDB source lookup.
 
+Each native CI job starts without a Bazel lockfile, generates it in update mode,
+and uploads it with the resolved module graph and hashes of the declared inputs.
+`MODULE.bazel.lock` remains ignored. These records are retained before the
+package test so a failed build still leaves its selected dependencies available
+for diagnosis.
+
 The full OpenSSL suite also needs the SymCrypt engine and provider: SONiC's
 existing test patch copies them before running its tests. Those components link
 against OpenSSL, so the core build cannot depend on their test setup. A separate
