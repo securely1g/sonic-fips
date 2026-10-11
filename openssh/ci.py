@@ -10,7 +10,7 @@ import platform
 import shutil
 import subprocess
 
-from tools.bazel.ci import audit, command
+from tools.bazel.ci import audit, command, retain_resolution
 
 TARGETS = ["//openssh:openssh_client_pkg", "//openssh:openssh_client_pkg.debug_symbols"]
 GENERATED = {"notice": "AUTO-GENERATED. DO NOT EDIT MANUALLY.", "generator": "openssh/ci.py"}
@@ -54,6 +54,7 @@ def main():
                             *flags, "--include_file_write_contents", "--output=jsonproto"],
                            stdout=stdout, stderr=stderr, check=True)
         write_json(output / "audit.json", audit(json.loads((output / "actions.json").read_text())))
+        retain_resolution(output, args.architecture, args.bazel_arg)
         # The original unit/compatibility targets and the private-agent smoke
         # execute in a separate no-cache action. CI starts with a fresh output
         # base, even when dependency builds are restored from the disk cache.
