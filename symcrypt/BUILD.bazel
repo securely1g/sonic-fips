@@ -1,3 +1,4 @@
+load("@bazel_skylib//rules:select_file.bzl", "select_file")
 load("@rules_distroless//distroless:defs.bzl", "flatten")
 load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake", "cmake_variant")
 load("@rules_python//python:defs.bzl", "py_binary", "py_test")
@@ -182,6 +183,12 @@ cmake_variant(
     ]
 ]
 
+select_file(
+    name = "built_CMake.log",
+    srcs = ":built_CMake_logs",
+    subpath = "symcrypt_foreign_cc/CMake.log",
+)
+
 [
     keep_debug_info(
         name = "packaged_" + output,
@@ -193,7 +200,7 @@ cmake_variant(
         "symcryptunittest",
         "compile_commands.json",
         "CMakeCache.txt",
-        "CMake_logs",
+        "CMake.log",
         "provider_compile_commands.json",
         "provider_CMakeCache.txt",
     ]

@@ -42,7 +42,7 @@ def main():
                          "sha256": hashlib.sha256(destination.read_bytes()).hexdigest()})
     evidence = output / "core-build"
     evidence.mkdir(exist_ok=True)
-    for target in ["compile_commands.json", "CMakeCache.txt", "CMake_logs", "provider_compile_commands.json", "provider_CMakeCache.txt"]:
+    for target in ["compile_commands.json", "CMakeCache.txt", "CMake.log", "provider_compile_commands.json", "provider_CMakeCache.txt"]:
         files = subprocess.check_output(["bazel", "cquery", "//symcrypt:packaged_" + target, *flags, "--output=files"], text=True).splitlines()
         for source in files:
             shutil.copyfile(source, evidence / Path(source).name)
