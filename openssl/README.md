@@ -79,3 +79,11 @@ against OpenSSL, so the core build cannot depend on their test setup. A separate
 integration test must supply their declared source-build outputs. This full-suite
 integration remains pending while that producer is migrated; a core package
 check does not establish that the full suite passed.
+
+## Shared package imports
+
+Distroless package imports use the published `rules_distroless`
+`0.9.4.sonic.5` module from the maintained SONiC registry `main` endpoint.
+CI resolves its checksum-verified source, patches and overlays through Bazel;
+it no longer prepares an external Distroless override from a proposal snapshot.
+The separate build-infrastructure override remains until those tools land.
