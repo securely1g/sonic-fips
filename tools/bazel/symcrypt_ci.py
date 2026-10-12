@@ -13,6 +13,13 @@ import subprocess
 from ci import audit, command, retain_resolution
 
 
+PACKAGES = ["runtime", "runtime.debug_symbols"]
+BUILD_EVIDENCE = ["compile_commands.json", "CMakeCache.txt", "CMake.log",
+                  "provider_compile_commands.json", "provider_CMakeCache.txt"]
+ARTIFACT_TARGETS = (["//symcrypt:" + name for name in PACKAGES]
+                    + ["//symcrypt:packaged_" + name for name in BUILD_EVIDENCE])
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--architecture", choices=["amd64", "arm64"], required=True)
@@ -26,7 +33,8 @@ def main():
     flags = [f"--platforms=@sonic_build_infra//platforms:{machine}_trixie",
              f"--host_platform=@sonic_build_infra//platforms:{machine}_trixie", "--jobs=4", *args.bazel_arg]
     with (output / "actions.json").open("w") as stdout, (output / "audit.log").open("w") as stderr:
-        subprocess.run(["bazel", "aquery", "deps(//symcrypt:package_test)", *flags,
+        query = "deps(set(//symcrypt:package_test " + " ".join(ARTIFACT_TARGETS) + "))"
+        subprocess.run(["bazel", "aquery", query, *flags,
                         "--include_file_write_contents", "--output=jsonproto"], stdout=stdout, stderr=stderr, check=True)
     (output / "audit.json").write_text(json.dumps(audit(json.loads((output / "actions.json").read_text())), indent=2) + "\n")
     # Also analyze the real public package test from a downstream module. This
@@ -43,8 +51,11 @@ def main():
     retain_resolution(output, args.architecture, args.bazel_arg)
     command(["bazel", "test", "//symcrypt:package_test", *flags, "--test_output=errors", "--nocache_test_results",
              "--build_event_json_file=" + str(output / "events.json")], output / "test.log")
+    # cquery reports configured paths without building them. Evidence outputs
+    # are not all dependencies of package_test, so materialize them explicitly.
+    command(["bazel", "build", *ARTIFACT_TARGETS, *flags], output / "artifact-build.log")
     packages = []
-    for target in ["runtime", "runtime.debug_symbols"]:
+    for target in PACKAGES:
         files = subprocess.check_output(["bazel", "cquery", "//symcrypt:" + target, *flags, "--output=files"], text=True).splitlines()
         assert len(files) == 1, files
         destination = output / (target + ".tar")
@@ -53,7 +64,7 @@ def main():
                          "sha256": hashlib.sha256(destination.read_bytes()).hexdigest()})
     evidence = output / "core-build"
     evidence.mkdir(exist_ok=True)
-    for target in ["compile_commands.json", "CMakeCache.txt", "CMake.log", "provider_compile_commands.json", "provider_CMakeCache.txt"]:
+    for target in BUILD_EVIDENCE:
         files = subprocess.check_output(["bazel", "cquery", "//symcrypt:packaged_" + target, *flags, "--output=files"], text=True).splitlines()
         for source in files:
             shutil.copyfile(source, evidence / Path(source).name)
