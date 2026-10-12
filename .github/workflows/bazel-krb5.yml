@@ -52,6 +52,8 @@ jobs:
           cache-version: "8.5.1"
       - name: Run original crypto tests and check installed runtime and debug files
         env:
+          # Bazel includes client environment in retained build events.
+          BAZELISK_GITHUB_TOKEN: ""
           CI_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           test ! -e MODULE.bazel.lock
