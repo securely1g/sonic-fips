@@ -13,6 +13,7 @@ import subprocess
 from tools.bazel.ci import audit, command, retain_resolution
 
 TARGET = "//openssl/integration:openssl_symcrypt_test"
+RUNTIME = "//symcrypt:runtime"
 GENERATED = {"notice": "AUTO-GENERATED. DO NOT EDIT MANUALLY.", "generator": "openssl/integration/ci.py"}
 
 
@@ -53,7 +54,7 @@ def main():
              "--jobs=4", *args.bazel_arg]
     try:
         with (output / "actions.json").open("w") as stdout, (output / "audit.log").open("w") as stderr:
-            subprocess.run(["bazel", "aquery", f"deps({TARGET})", *flags,
+            subprocess.run(["bazel", "aquery", f"deps(set({TARGET} {RUNTIME}))", *flags,
                             "--include_file_write_contents", "--output=jsonproto"], stdout=stdout, stderr=stderr, check=True)
         write_json(output / "audit.json", audit(json.loads((output / "actions.json").read_text())))
         retain_resolution(output, args.architecture, args.bazel_arg)
@@ -64,7 +65,10 @@ def main():
         summary = json.loads((output / "openssl-suite.json").read_text())
         if summary.get("status") != "passed" or summary.get("architecture") != machine:
             raise SystemExit("Missing successful native vendor-suite receipt")
-        archive = subprocess.check_output(["bazel", "cquery", "//symcrypt:runtime", *flags, "--output=files"], text=True).strip()
+        # The suite consumes plugin files directly, not the packaged archive.
+        # cquery only locates an output; build the retained runtime TAR first.
+        command(["bazel", "build", RUNTIME, *flags], output / "runtime-build.log")
+        archive = subprocess.check_output(["bazel", "cquery", RUNTIME, *flags, "--output=files"], text=True).strip()
         shutil.copyfile(archive, output / "symcrypt-runtime.tar")
         git = ["git", "-c", "safe.directory=" + str(Path.cwd())]
         write_json(output / "result.json", {
