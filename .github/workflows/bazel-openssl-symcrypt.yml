@@ -52,6 +52,8 @@ jobs:
           cache-version: "8.5.1"
       - name: Run the original vendor suite with the declared plugins
         env:
+          # Bazel includes client environment in retained build events.
+          BAZELISK_GITHUB_TOKEN: ""
           CI_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           test ! -e MODULE.bazel.lock
