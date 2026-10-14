@@ -40,7 +40,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: securely1g/sonic-build-infra
-          ref: 4429ada56a20a9d9cb01369271766991974472bb
+          ref: 1f3e526a29e5fc391b42b11925a41889a44aa7a0
           path: _ci/infra
           persist-credentials: false
       - uses: bazel-contrib/setup-bazel@c5acdfb288317d0b5c0bbd7a396a3dc868bb0f86 # 0.19.0
