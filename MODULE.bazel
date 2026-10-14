@@ -85,3 +85,7 @@ symcrypt_openssl_source(name = "symcrypt_openssl_src")
 pyelftools_source = use_repo_rule("//symcrypt:sources.bzl", "pyelftools_source")
 
 pyelftools_source(name = "symcrypt_pyelftools")
+
+# Expose the existing upstream archive tool to the integration-test adapter.
+tar_tools = use_extension("@tar.bzl//tar:extensions.bzl", "toolchains")
+use_repo(tar_tools, "bsd_tar_toolchains")
