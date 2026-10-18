@@ -25,10 +25,14 @@ def _openssh_source_impl(ctx):
         url = "https://deb.debian.org/debian/pool/main/o/openssh/openssh_10.0p1-7.debian.tar.xz",
         sha256 = "09888aeb70db929b83f6acf8439f9de43c69ef7de89bb2f9549ef1bff5688fc5",
     )
-    selected = [line.strip() for line in ctx.read(ctx.attr.series).splitlines()
-                if line.strip() and not line.strip().startswith("#")]
+    selected = [
+        line.strip()
+        for line in ctx.read(ctx.attr.series).splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
     if selected != _PATCHES:
         fail("SONiC's OpenSSH patch series changed; update the source contract")
+
     # Match Make's SONiC series followed by the Debian package source series.
     # Both orders were independently checked to produce the same source files.
     for patch in ctx.attr.sonic_patches:
@@ -59,12 +63,7 @@ filegroup(
     srcs = glob(["**"], exclude = ["BUILD.bazel"]),
     visibility = ["//visibility:public"],
 )
-exports_files([
-    "source.json", "debian/rules", "debian/openssh-client.install",
-    "contrib/ssh-copy-id", "debian/ssh-argv0", "debian/openssh-client.apport",
-    "debian/systemd/ssh-agent.service", "debian/systemd/ssh-agent.socket",
-    "debian/copyright",
-])
+exports_files(["source.json", "contrib/ssh-copy-id"] + glob(["debian/**"]))
 """)
 
 openssh_source = repository_rule(

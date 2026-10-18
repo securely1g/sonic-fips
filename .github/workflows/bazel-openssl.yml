@@ -40,7 +40,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: securely1g/sonic-build-infra
-          ref: 38ff19ef6e0216bef4cc7e1b15d0cffe0701794e
+          ref: b6ab14f2c71022244488e1f48e1c8366771fd640
           path: _ci/infra
           persist-credentials: false
       - name: Prepare the reviewed Distroless package imports
