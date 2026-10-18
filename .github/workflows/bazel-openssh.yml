@@ -40,7 +40,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: securely1g/sonic-build-infra
-          ref: 4429ada56a20a9d9cb01369271766991974472bb
+          ref: b6ab14f2c71022244488e1f48e1c8366771fd640
           path: _ci/infra
           persist-credentials: false
       - uses: bazel-contrib/setup-bazel@c5acdfb288317d0b5c0bbd7a396a3dc868bb0f86 # 0.19.0
@@ -62,6 +62,20 @@ jobs:
           python3 -B -m openssh.ci --architecture '${{ matrix.architecture }}' --artifacts artifacts/openssh \
             --bazel-arg="--override_module=sonic-build-infra=$GITHUB_WORKSPACE/_ci/infra"
           git -c safe.directory="$GITHUB_WORKSPACE" diff --exit-code
+      - name: Build and inspect actual Debian packages
+        env:
+          BAZELISK_GITHUB_TOKEN: ""
+          CI_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 -B tools/bazel/debian_ci.py --component openssl --architecture '${{ matrix.architecture }}' --artifacts artifacts/openssh/debian \
+            --bazel-arg="--override_module=sonic-build-infra=$GITHUB_WORKSPACE/_ci/infra"
+          python3 -B tools/bazel/debian_ci.py --component openssh --architecture '${{ matrix.architecture }}' --artifacts artifacts/openssh/debian \
+            --bazel-arg="--override_module=sonic-build-infra=$GITHUB_WORKSPACE/_ci/infra"
+          git -c safe.directory="$GITHUB_WORKSPACE" diff --exit-code
+      - name: Check Debian package configuration, upgrade and removal
+        env:
+          SONIC_DEB_TEST_CONTAINER: "1"
+        run: bash openssh/debian/install_test.sh artifacts/openssh/debian 2>&1 | tee artifacts/openssh/debian/install.log
       - name: Upload packages, logs and source evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -5,7 +5,11 @@ load("@sonic_build_infra//tar:sonic_deploy_tar.bzl", "sonic_deploy_tar")
 
 package(default_visibility = ["//visibility:public"])
 
-exports_files(["configure.sh", "client_test.sh", "sources.bzl"])
+exports_files([
+    "configure.sh",
+    "client_test.sh",
+    "sources.bzl",
+])
 
 # The snapshot's public package alias adds Debian libssl transitively. Import
 # only FIDO2 itself so the crypto provider remains the SONiC OpenSSL build.
@@ -32,17 +36,13 @@ _BUILD_ENV = {
 # by client programs: libedit, GSSAPI, PKCS#11 and built-in FIDO security keys.
 [configure_make(
     name = name,
-    targets = targets,
-    tags = ["manual", "no-cache"] if name == "upstream_tests" else [],
-    postfix_script = 'cd "$${BUILD_TMPDIR}"\n/bin/sh "$${EXT_BUILD_ROOT}/$(execpath :client_test.sh)" "$${INSTALLDIR}/client-smoke.json"' if name == "upstream_tests" else "",
-    lib_source = "@openssh_src//:sources",
+    args = [
+        "DESTDIR=$$BUILD_TMPDIR$$/$$INSTALL_PREFIX$$",
+        "ASKPASS_PROGRAM=/usr/bin/ssh-askpass",
+    ],
+    build_data = ["@sonic_build_infra//tools/build_tools:configure_runtime"] + ([":client_test.sh"] if name == "upstream_tests" else []),
     configure_command = "bazel-configure",
     configure_in_place = True,
-    build_data = ["@sonic_build_infra//tools/build_tools:configure_runtime"] + ([":client_test.sh"] if name == "upstream_tests" else []),
-    env = select({
-        "@platforms//cpu:x86_64": dict(_BUILD_ENV, LD_LIBRARY_PATH = "$$EXT_BUILD_DEPS$$/build/usr/lib/x86_64-linux-gnu:$$EXT_BUILD_DEPS$$/lib"),
-        "@platforms//cpu:aarch64": dict(_BUILD_ENV, LD_LIBRARY_PATH = "$$EXT_BUILD_DEPS$$/build/usr/lib/aarch64-linux-gnu:$$EXT_BUILD_DEPS$$/lib"),
-    }),
     configure_options = [
         "--prefix=/usr",
         "--sysconfdir=/etc/ssh",
@@ -71,20 +71,43 @@ _BUILD_ENV = {
         "--with-default-path=/usr/local/bin:/usr/bin:/bin:/usr/games",
         "--with-superuser-path=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
     ],
+    env = select({
+        "@platforms//cpu:x86_64": dict(
+            _BUILD_ENV,
+            LD_LIBRARY_PATH = "$$EXT_BUILD_DEPS$$/build/usr/lib/x86_64-linux-gnu:$$EXT_BUILD_DEPS$$/lib",
+        ),
+        "@platforms//cpu:aarch64": dict(
+            _BUILD_ENV,
+            LD_LIBRARY_PATH = "$$EXT_BUILD_DEPS$$/build/usr/lib/aarch64-linux-gnu:$$EXT_BUILD_DEPS$$/lib",
+        ),
+    }),
     features = ["-sanitize_pwd"],
-    args = [
-        "DESTDIR=$$BUILD_TMPDIR$$/$$INSTALL_PREFIX$$",
-        "ASKPASS_PROGRAM=/usr/bin/ssh-askpass",
-    ],
+    lib_source = "@openssh_src//:sources",
     out_bin_dir = "usr",
     out_binaries = [
-        "bin/scp", "bin/sftp", "bin/ssh", "bin/ssh-add", "bin/ssh-agent",
-        "bin/ssh-keygen", "bin/ssh-keyscan",
-        "lib/openssh/ssh-keysign", "lib/openssh/ssh-pkcs11-helper", "lib/openssh/ssh-sk-helper",
+        "bin/scp",
+        "bin/sftp",
+        "bin/ssh",
+        "bin/ssh-add",
+        "bin/ssh-agent",
+        "bin/ssh-keygen",
+        "bin/ssh-keyscan",
+        "lib/openssh/ssh-keysign",
+        "lib/openssh/ssh-pkcs11-helper",
+        "lib/openssh/ssh-sk-helper",
     ],
     # Output groups use basenames; naming this etc/ssh would hide the ssh ELF.
-    out_data_dirs = ["etc", "usr/share/man"],
+    out_data_dirs = [
+        "etc",
+        "usr/share/man",
+    ],
     out_data_files = ["client-smoke.json"] if name == "upstream_tests" else [],
+    postfix_script = 'cd "$${BUILD_TMPDIR}"\n/bin/sh "$${EXT_BUILD_ROOT}/$(execpath :client_test.sh)" "$${INSTALLDIR}/client-smoke.json"' if name == "upstream_tests" else "",
+    tags = [
+        "manual",
+        "no-cache",
+    ] if name == "upstream_tests" else [],
+    targets = targets,
     deps = [
         "//openssl:build",
         "@openssh_deps//libaudit-dev:libaudit",
@@ -103,9 +126,23 @@ _BUILD_ENV = {
         "@openssh_deps//zlib1g-dev:zlib1g",
     ],
 ) for name, targets in [
-    ("build", ["all", "install-nokeys"]),
+    (
+        "build",
+        [
+            "all",
+            "install-nokeys",
+        ],
+    ),
     # Debian's original unit/compatibility tests stay outside production builds.
-    ("upstream_tests", ["all", "unit", "compat-tests", "install-nokeys"]),
+    (
+        "upstream_tests",
+        [
+            "all",
+            "unit",
+            "compat-tests",
+            "install-nokeys",
+        ],
+    ),
 ]]
 
 filegroup(
@@ -121,11 +158,24 @@ keep_debug_info(
 
 _BINARIES = {
     "usr/bin/" + name: name
-    for name in ["scp", "sftp", "ssh", "ssh-add", "ssh-agent", "ssh-keygen", "ssh-keyscan"]
+    for name in [
+        "scp",
+        "sftp",
+        "ssh",
+        "ssh-add",
+        "ssh-agent",
+        "ssh-keygen",
+        "ssh-keyscan",
+    ]
 }
+
 _BINARIES.update({
     "usr/lib/openssh/" + name: name
-    for name in ["ssh-keysign", "ssh-pkcs11-helper", "ssh-sk-helper"]
+    for name in [
+        "ssh-keysign",
+        "ssh-pkcs11-helper",
+        "ssh-sk-helper",
+    ]
 })
 
 [
@@ -170,11 +220,12 @@ _DATA = {
 
 sonic_deploy_tar(
     name = "openssh_client_pkg",
+    srcs = [source for source, _ in _DATA.values()],
     binaries = {
         path + " uid=0 gid=0 mode=" + ("4755" if name == "ssh-keysign" else "0755") + " type=file": ":" + name
         for path, name in _BINARIES.items()
     },
-    srcs = [source for source, _ in _DATA.values()],
+    force_debug_build = True,
     mtree = [
         path + " uid=0 gid=0 mode=" + mode + " type=file content=$(location " + source + ")"
         for path, (source, mode) in _DATA.items()
@@ -182,7 +233,6 @@ sonic_deploy_tar(
         "etc/ssh/ssh_config.d uid=0 gid=0 mode=0755 type=dir",
         "usr/lib/systemd/user/graphical-session-pre.target.wants/ssh-agent.service uid=0 gid=0 mode=0777 type=link link=../ssh-agent.service",
     ],
-    force_debug_build = True,
 )
 
 py_test(
@@ -199,4 +249,9 @@ py_test(
         "@openssh_src//:debian/openssh-client.install",
     ],
     deps = ["//openssl:package_test_utils"],
+)
+
+alias(
+    name = "openssh_client_deb",
+    actual = "//openssh/debian:openssh_client_deb",
 )
