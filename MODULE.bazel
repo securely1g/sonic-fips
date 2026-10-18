@@ -196,3 +196,17 @@ apt.install(
     ],
 )
 use_repo(apt, "krb5_package_deps")
+
+apt.install(
+    dependency_set = "symcrypt_package_deps",
+    packages = [
+        "libc6",
+        "libgcc-s1",
+    ],
+    suites = [
+        "trixie",
+        "trixie-updates",
+        "trixie-security",
+    ],
+)
+use_repo(apt, "symcrypt_package_deps")
