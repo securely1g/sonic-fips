@@ -3,6 +3,7 @@ common --registry=https://bcr.bazel.build
 common --platforms=@sonic_build_infra//platforms:x86_64_trixie
 common --host_platform=@sonic_build_infra//platforms:x86_64_trixie
 common --lockfile_mode=update
+common --downloader_config=tools/bazel/downloader.cfg
 build --copt=-g
 build --strip=never
 test --test_output=errors

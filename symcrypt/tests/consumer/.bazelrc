@@ -1,1 +1,3 @@
 import %workspace%/../../../.bazelrc
+# Resolve the inherited downloader configuration from this consumer workspace.
+common --downloader_config=../../../tools/bazel/downloader.cfg

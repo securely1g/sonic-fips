@@ -39,3 +39,8 @@ pipeline disables that step or applies its existing known-issue exclusions.
 This target does not activate `/etc/fips/fips_enable`, claim those tests passed,
 or establish FIPS certification. Final container/guest configuration needs its
 own integration validation.
+
+Bazel downloads pigz 2.8 through the byte-identical MacPorts mirror declared in
+`tools/bazel/downloader.cfg`. This avoids upstream checksum failures during the
+inherited Debian package checks. The version, source checksum, patches and build
+options remain unchanged.
