@@ -62,7 +62,7 @@ def _krb5_source_impl(ctx):
     }) + "\n")
     ctx.file("BUILD.bazel", """# AUTO-GENERATED. DO NOT EDIT MANUALLY.
 # Generator: krb5/sources.bzl
-exports_files(["source.json", "debian/rules", "debian/libk5crypto3.install", "debian/libk5crypto3.symbols", "debian/copyright", "README", "debian/README.Debian", "debian/libkrb5support0.symbols", "debian/libkrb5-3.symbols", "debian/libgssapi-krb5-2.symbols"])
+exports_files(["source.json", "README"] + glob(["debian/**"]))
 """)
     ctx.file("src/BUILD.bazel", """# AUTO-GENERATED. DO NOT EDIT MANUALLY.
 # Generator: krb5/sources.bzl
