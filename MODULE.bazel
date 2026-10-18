@@ -10,12 +10,12 @@ module(
 bazel_dep(name = "platforms", version = "1.1.0")
 bazel_dep(name = "bazel_skylib", version = "1.9.2")
 bazel_dep(name = "rules_cc", version = "0.2.20")
-bazel_dep(name = "rules_distroless", version = "0.9.4.sonic.4")
+bazel_dep(name = "rules_distroless", version = "0.9.4.sonic.5")
 bazel_dep(name = "rules_foreign_cc", version = "0.16.0")
 bazel_dep(name = "rules_gzip", version = "1.0.0")
 bazel_dep(name = "rules_pkg", version = "1.1.0")
 bazel_dep(name = "rules_python", version = "1.9.0")
-bazel_dep(name = "sonic-build-infra", version = "0.0.17-1f3e526a29e5fc391b42b11925a41889a44aa7a0", repo_name = "sonic_build_infra")
+bazel_dep(name = "sonic-build-infra", version = "0.0.16-b6ab14f2c71022244488e1f48e1c8366771fd640", repo_name = "sonic_build_infra")
 bazel_dep(name = "tar.bzl", version = "0.10.5-sonic.1")
 
 single_version_override(
