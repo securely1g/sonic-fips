@@ -92,6 +92,7 @@ git_override(
     commit = "38ff19ef6e0216bef4cc7e1b15d0cffe0701794e",
     remote = "https://github.com/securely1g/sonic-build-infra.git",
 )
+
 bazel_dep(name = "toolchains_llvm", version = "1.11.2")
 
 sysroots = use_extension("@sonic_build_infra//toolchains/sysroot:extensions.bzl", "sysroots")
@@ -121,3 +122,17 @@ symcrypt_openssl_source(name = "symcrypt_openssl_src")
 pyelftools_source = use_repo_rule("//symcrypt:sources.bzl", "pyelftools_source")
 
 pyelftools_source(name = "symcrypt_pyelftools")
+
+apt.install(
+    dependency_set = "symcrypt_package_deps",
+    packages = [
+        "libc6",
+        "libgcc-s1",
+    ],
+    suites = [
+        "trixie",
+        "trixie-updates",
+        "trixie-security",
+    ],
+)
+use_repo(apt, "symcrypt_package_deps")
