@@ -34,24 +34,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # Draft validation consumes the exact reviewed tool sources. Ordinary
-      # registry selection remains maintained main plus BCR in .bazelrc.
-      - name: Check out the declared build tools and compiler fixes
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: securely1g/sonic-build-infra
-          ref: 1d6990a2ba2980315f086a461a08312bbc3f217c
-          path: _ci/infra
-          persist-credentials: false
-      - name: Prepare the reviewed Distroless package imports
-        run: |
-          set -euo pipefail
-          curl --fail --location --retry 3 --output "$RUNNER_TEMP/distroless.tar.gz" \
-            https://github.com/bazel-contrib/rules_distroless/releases/download/v0.9.4/rules_distroless-v0.9.4.tar.gz
-          echo "5d43f4f44f0f0fb614194a07a6dcf7b29338cfc8ab7f6129ad1e4403c1ad1c73  $RUNNER_TEMP/distroless.tar.gz" | sha256sum --check --strict
-          mkdir -p "$RUNNER_TEMP/distroless"
-          tar -xzf "$RUNNER_TEMP/distroless.tar.gz" --strip-components=1 -C "$RUNNER_TEMP/distroless"
-          python3 krb5/prepare_distroless.py "$RUNNER_TEMP/distroless" artifacts/krb5
       - uses: bazel-contrib/setup-bazel@c5acdfb288317d0b5c0bbd7a396a3dc868bb0f86 # 0.19.0
         with:
           bazelisk-version: 1.29.0
@@ -59,18 +41,22 @@ jobs:
           repository-cache: true
           disk-cache: krb5-${{ matrix.architecture }}
           cache-version: "8.5.1"
+      - name: Record the pending toolchain registration for Draft CI
+        env:
+          SONIC_BAZEL_REGISTRY_URL: https://raw.githubusercontent.com/securely1g/sonic-bazel-registry/codex/debian-gcc-toolchains
+        run: python3 -B tools/bazel/registry_inputs.py artifacts/krb5
       - name: Run original crypto tests and check installed runtime and debug files
         env:
+          # Bazel includes client environment in retained build events.
+          BAZELISK_GITHUB_TOKEN: ""
           CI_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           test ! -e MODULE.bazel.lock
           test -z "$(git -c safe.directory="$GITHUB_WORKSPACE" ls-files MODULE.bazel.lock)"
           git -c safe.directory="$GITHUB_WORKSPACE" check-ignore MODULE.bazel.lock
-          python3 -B -m krb5.ci --architecture '${{ matrix.architecture }}' --artifacts artifacts/krb5 \
-            --bazel-arg="--override_module=sonic-build-infra=$GITHUB_WORKSPACE/_ci/infra" \
-            --bazel-arg="--override_module=rules_distroless=$RUNNER_TEMP/distroless"
+          python3 -B -m krb5.ci --architecture '${{ matrix.architecture }}' --artifacts artifacts/krb5
           git -c safe.directory="$GITHUB_WORKSPACE" diff --exit-code
-      - name: Upload packages, logs and source evidence
+      - name: Upload runtime and debug TARs, logs and source evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
