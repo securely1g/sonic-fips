@@ -34,12 +34,24 @@ Server, SFTP-server and graphical askpass package coverage must be reported
 separately; the client package is the scope needed by the Syncd runtime image.
 
 The runtime TAR contains those client programs, configuration, scripts, user
-units and copyright notice; manual pages and other documentation are outside
-this runtime-only output. It preserves the raw Debian payload's root ownership
-and `ssh-keysign` mode `4755`. Debian's client post-install script separately
-creates `_ssh` and sets `ssh-agent` to that group with mode `2755`. The image
-composition must preserve that existing group and permission change when
-replacing the old payload. No host account or service is modified by this build.
+units, the original tmpfiles rule and copyright notice; manual pages and other
+documentation are outside this runtime-only output. OCI consumers add this TAR
+directly and add its matching symbols to the debug image. No DEB generation or
+Debian metadata helpers are required.
+
+The TAR preserves root ownership and `ssh-keysign` mode `4755`. Image assembly
+must also supply the effects of Debian's client post-install script: retain or
+create the `_ssh` group, assign its image-specific GID to `usr/bin/ssh-agent`,
+and set mode `2755` (or preserve an intentional existing permission override).
+The image owns group allocation, so the component TAR leaves `ssh-agent` at
+root:root `0755`; extracting it alone does not complete that installation step.
+Keep the shipped user units and tmpfiles rule, which excludes `/tmp/ssh-*` from
+cleanup. No host account or service is modified by this build.
+
+This path assembles a fresh image. It does not perform Debian package upgrades,
+configuration-file merging, removal or purge, and it must not invent installed
+dpkg records. A consumer retaining APT-managed replacement packages needs a
+separate integration contract and validation.
 
 ## Build and test
 

@@ -28,7 +28,12 @@ def runtime_manifest(path):
             raise AssertionError("Unexpected Debian install directive: " + line)
         if "/man/" not in destination:
             files.add(destination)
-    files.add("usr/share/doc/openssh-client/copyright")
+    files.update({
+        "usr/share/doc/openssh-client/copyright",
+        # dh_installtmpfiles installs this source file separately from .install.
+        # Include it directly so OCI consumers need no Debian helper execution.
+        "usr/lib/tmpfiles.d/openssh-client.conf",
+    })
     return files, binaries
 
 
@@ -60,6 +65,9 @@ def main():
         link = entries["usr/lib/systemd/user/graphical-session-pre.target.wants/ssh-agent.service"]
         assert link.issym() and link.linkname == "../ssh-agent.service"
         assert "$OpenBSD:" not in (root / "etc/ssh/ssh_config").read_text()
+        tmpfiles = "usr/lib/tmpfiles.d/openssh-client.conf"
+        assert entries[tmpfiles].mode == 0o644
+        assert (root / tmpfiles).read_text().strip() == "x /tmp/ssh-*"
         check_gdb(root / "usr/bin/ssh", symbols, "main", "ssh.c")
         check_gdb(root / "usr/bin/ssh-keygen", symbols, "main", "ssh-keygen.c")
         print("OpenSSH client runtime manifest, native PIE, ownership and ten debug pairs passed")

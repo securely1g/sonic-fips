@@ -63,7 +63,12 @@ filegroup(
     srcs = glob(["**"], exclude = ["BUILD.bazel"]),
     visibility = ["//visibility:public"],
 )
-exports_files(["source.json", "contrib/ssh-copy-id"] + glob(["debian/**"]))
+exports_files([
+    "source.json", "debian/rules", "debian/openssh-client.install",
+    "contrib/ssh-copy-id", "debian/ssh-argv0", "debian/openssh-client.apport",
+    "debian/systemd/ssh-agent.service", "debian/systemd/ssh-agent.socket",
+    "debian/copyright", "debian/openssh-client.tmpfiles",
+])
 """)
 
 openssh_source = repository_rule(
