@@ -4,7 +4,7 @@ SONiC patches OpenSSL's original `make test` recipe to copy the SymCrypt engine
 and provider from `libdir`. The production OpenSSL build cannot depend on those
 plugins because they link OpenSSL themselves. This downstream test target
 builds the original suite separately, using the same build configuration and
-the packaged source-built plugins:
+the source-built plugins from `//symcrypt:runtime`, a filesystem TAR:
 
 ```sh
 bazel test //openssl/integration:openssl_symcrypt_test --nocache_test_results
@@ -20,7 +20,7 @@ directory with `-I`. The sealed core also sits beside the test build's shared
 libraries, where OpenSSL's existing loader wrapper can find it even after Perl
 clears inherited library paths. Neither adapter changes a crypto test.
 
-Production packages keep the same build arguments, targets and outputs; their
+Production runtime/debug TARs keep the same build arguments, targets and outputs; their
 configuration was moved into `//openssl:build.bzl` so the test cannot silently
 choose a different algorithm set.
 
@@ -40,7 +40,5 @@ This target does not activate `/etc/fips/fips_enable`, claim those tests passed,
 or establish FIPS certification. Final container/guest configuration needs its
 own integration validation.
 
-Bazel downloads pigz 2.8 through the byte-identical MacPorts mirror declared in
-`tools/bazel/downloader.cfg`. This avoids upstream checksum failures during the
-inherited Debian package checks. The version, source checksum, patches and build
-options remain unchanged.
+The suite extracts its plugin inputs directly from the SymCrypt runtime TAR with
+the declared BSD tar toolchain. It does not build or install Debian packages.

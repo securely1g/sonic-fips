@@ -65,8 +65,8 @@ def main():
         summary = json.loads((output / "openssl-suite.json").read_text())
         if summary.get("status") != "passed" or summary.get("architecture") != machine:
             raise SystemExit("Missing successful native vendor-suite receipt")
-        # The suite consumes plugin files directly, not the packaged archive.
-        # cquery only locates an output; build the retained runtime TAR first.
+        # The plugin inputs come from the runtime TAR. Build that declared
+        # artifact explicitly before cquery locates it for evidence retention.
         command(["bazel", "build", RUNTIME, *flags], output / "runtime-build.log")
         archive = subprocess.check_output(["bazel", "cquery", RUNTIME, *flags, "--output=files"], text=True).strip()
         shutil.copyfile(archive, output / "symcrypt-runtime.tar")
