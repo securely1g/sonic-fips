@@ -10,8 +10,8 @@ def _clang_impl(_ctx):
         llvm_version = "19.1.7",
         stdlib = {"": "dynamic-stdc++-14"},
         sysroot = {
-            "linux-x86_64": str(Label("@symcrypt_sysroot_amd64//root:sysroot")),
-            "linux-aarch64": str(Label("@symcrypt_sysroot_arm64//root:sysroot")),
+            "linux-x86_64": str(Label("@sonic_sysroot//root:sysroot")),
+            "linux-aarch64": str(Label("@sonic_sysroot//root:sysroot")),
         },
     )
 

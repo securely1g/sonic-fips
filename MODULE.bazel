@@ -10,10 +10,10 @@ module(
 bazel_dep(name = "platforms", version = "1.1.0")
 bazel_dep(name = "bazel_skylib", version = "1.9.2")
 bazel_dep(name = "rules_cc", version = "0.2.20")
-bazel_dep(name = "rules_distroless", version = "0.9.4.sonic.4")
+bazel_dep(name = "rules_distroless", version = "0.9.4.sonic.5")
 bazel_dep(name = "rules_foreign_cc", version = "0.16.0")
 bazel_dep(name = "rules_python", version = "1.9.0")
-bazel_dep(name = "sonic-build-infra", version = "0.0.17-1f3e526a29e5fc391b42b11925a41889a44aa7a0", repo_name = "sonic_build_infra")
+bazel_dep(name = "sonic-build-infra", version = "0.0.16-1d6990a2ba2980315f086a461a08312bbc3f217c", repo_name = "sonic_build_infra")
 bazel_dep(name = "tar.bzl", version = "0.10.5-sonic.1")
 
 single_version_override(
@@ -59,15 +59,7 @@ openssl_source(name = "openssl_src")
 bazel_dep(name = "toolchains_llvm", version = "1.11.2")
 
 sysroots = use_extension("@sonic_build_infra//toolchains/sysroot:extensions.bzl", "sysroots")
-sysroots.debian(
-    name = "symcrypt_sysroot_amd64",
-    architecture = "amd64",
-)
-sysroots.debian(
-    name = "symcrypt_sysroot_arm64",
-    architecture = "arm64",
-)
-use_repo(sysroots, "symcrypt_sysroot_amd64", "symcrypt_sysroot_arm64")
+use_repo(sysroots, "sonic_sysroot")
 
 # Core SymCrypt explicitly chooses Clang in the native recipe. Do not register
 # it globally: its cmake_variant target selects this toolchain locally.

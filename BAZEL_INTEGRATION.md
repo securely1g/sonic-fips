@@ -13,7 +13,7 @@ It is not a replacement for reviewing and merging the individual source PRs.
 
 The merged MODULE keeps every component's source and APT declarations, selects
 Distroless `0.9.4.sonic.4`, and selects shared infra
-`0.0.17-1f3e526a29e5fc391b42b11925a41889a44aa7a0`. All draft workflows use that same
+`0.0.16-1d6990a2ba2980315f086a461a08312bbc3f217c`. All draft workflows use that same
 infra source override. Ordinary registry endpoints remain SONiC main and BCR.
 
 Component production sources and package APIs remain with their owning PRs.
