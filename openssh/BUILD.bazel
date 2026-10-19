@@ -214,6 +214,7 @@ _DATA = {
     "usr/share/apport/package-hooks/openssh-client.py": ("@openssh_src//:debian/openssh-client.apport", "0644"),
     "usr/lib/systemd/user/ssh-agent.service": ("@openssh_src//:debian/systemd/ssh-agent.service", "0644"),
     "usr/lib/systemd/user/ssh-agent.socket": ("@openssh_src//:debian/systemd/ssh-agent.socket", "0644"),
+    "usr/lib/tmpfiles.d/openssh-client.conf": ("@openssh_src//:debian/openssh-client.tmpfiles", "0644"),
     "usr/share/doc/openssh-client/copyright": ("@openssh_src//:debian/copyright", "0644"),
     "etc/ssh/ssh_config": (":client_configuration", "0644"),
 }
@@ -249,9 +250,4 @@ py_test(
         "@openssh_src//:debian/openssh-client.install",
     ],
     deps = ["//openssl:package_test_utils"],
-)
-
-alias(
-    name = "openssh_client_deb",
-    actual = "//openssh/debian:openssh_client_deb",
 )
