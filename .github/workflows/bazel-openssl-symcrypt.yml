@@ -34,15 +34,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # Draft validation consumes the exact reviewed tool sources. Ordinary
-      # registry selection remains maintained main plus BCR in .bazelrc.
-      - name: Check out the declared build tools and compiler fixes
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: securely1g/sonic-build-infra
-          ref: 38ff19ef6e0216bef4cc7e1b15d0cffe0701794e
-          path: _ci/infra
-          persist-credentials: false
       - uses: bazel-contrib/setup-bazel@c5acdfb288317d0b5c0bbd7a396a3dc868bb0f86 # 0.19.0
         with:
           bazelisk-version: 1.29.0
@@ -59,8 +50,7 @@ jobs:
           test ! -e MODULE.bazel.lock
           test -z "$(git -c safe.directory="$GITHUB_WORKSPACE" ls-files MODULE.bazel.lock)"
           git -c safe.directory="$GITHUB_WORKSPACE" check-ignore MODULE.bazel.lock
-          python3 -B -m openssl.integration.ci --architecture '${{ matrix.architecture }}' --artifacts artifacts/openssl-symcrypt \
-            --bazel-arg="--override_module=sonic-build-infra=$GITHUB_WORKSPACE/_ci/infra"
+          python3 -B -m openssl.integration.ci --architecture '${{ matrix.architecture }}' --artifacts artifacts/openssl-symcrypt
           git -c safe.directory="$GITHUB_WORKSPACE" diff --exit-code
       - name: Upload original suite logs and dependency evidence
         if: always()
