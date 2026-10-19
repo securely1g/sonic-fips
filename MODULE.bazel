@@ -11,10 +11,8 @@ bazel_dep(name = "platforms", version = "1.1.0")
 bazel_dep(name = "rules_cc", version = "0.2.20")
 bazel_dep(name = "rules_distroless", version = "0.9.4.sonic.5")
 bazel_dep(name = "rules_foreign_cc", version = "0.16.0")
-bazel_dep(name = "rules_gzip", version = "1.0.0")
-bazel_dep(name = "rules_pkg", version = "1.1.0")
 bazel_dep(name = "rules_python", version = "1.9.0")
-bazel_dep(name = "sonic-build-infra", version = "0.0.16-4429ada56a20a9d9cb01369271766991974472bb", repo_name = "sonic_build_infra")
+bazel_dep(name = "sonic-build-infra", version = "0.0.16-1d6990a2ba2980315f086a461a08312bbc3f217c", repo_name = "sonic_build_infra")
 bazel_dep(name = "tar.bzl", version = "0.10.5-sonic.1")
 
 single_version_override(
@@ -56,41 +54,6 @@ use_repo(apt, "openssl_deps")
 openssl_source = use_repo_rule("//openssl:sources.bzl", "openssl_source")
 
 openssl_source(name = "openssl_src")
-
-# Packaging uses the same locked runtime libraries as the compiler inputs.
-apt.install(
-    dependency_set = "openssl_package_deps",
-    packages = [
-        "libc6",
-        "libzstd1",
-        "zlib1g",
-    ],
-    suites = [
-        "trixie",
-        "trixie-updates",
-        "trixie-security",
-    ],
-)
-use_repo(apt, "openssl_package_deps")
-
-# Upstream archive extraction in Debian metadata actions.
-tar_tools = use_extension("@tar.bzl//tar:extensions.bzl", "toolchains")
-use_repo(tar_tools, "bsd_tar_toolchains")
-
-# Use the same reproducible native gzip configuration as sonic-buildimage.
-bazel_dep(name = "pigz", version = "2.8")
-bazel_dep(name = "rules_multirun", version = "0.14.0")
-bazel_dep(name = "toolchain_utils", version = "1.0.2")
-
-register_toolchains("//tools/bazel/gzip:toolchain")
-
-# Draft producer validation: the reviewed Debian metadata/tool features are
-# published together until their individual infrastructure PRs land.
-git_override(
-    module_name = "sonic-build-infra",
-    commit = "b6ab14f2c71022244488e1f48e1c8366771fd640",
-    remote = "https://github.com/securely1g/sonic-build-infra.git",
-)
 
 apt.install(
     dependency_set = "openssh_deps",
