@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit, test and retain the installed SymCrypt runtime/debug packages."""
+"""Audit, test and retain the installed SymCrypt runtime/debug TARs."""
 
 import argparse
 import hashlib

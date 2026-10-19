@@ -204,18 +204,3 @@ py_test(
         ":openssl_pkg.debug_symbols",
     ],
 )
-
-# Actual Debian packages retain the same source-built runtime and debug outputs.
-[alias(
-    name = name,
-    actual = "//openssl/debian:" + name,
-) for name in [
-    "libssl3t64_deb",
-    "openssl_deb",
-    "libssl_dev_deb",
-]]
-
-alias(
-    name = "libssl3t64_symbols",
-    actual = "//openssl/debian:libssl3t64.symbols",
-)
