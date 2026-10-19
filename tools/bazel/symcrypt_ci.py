@@ -70,7 +70,7 @@ def main():
             shutil.copyfile(source, evidence / Path(source).name)
     cache = (evidence / "CMakeCache.txt").read_text()
     assert "Clang" in (evidence / "CMake.log").read_text()
-    assert "--ld-path=" in cache and "linux-ld" in cache
+    assert "--ld-path=" in cache and f"{machine}-linux-gnu-ld" in cache
     assert "SYMCRYPT_FIPS_BUILD:BOOL=ON" in cache and "SYMCRYPT_FIPS_POSTPROCESS:BOOL=ON" in cache
     commands = json.loads((evidence / "compile_commands.json").read_text())
     assert commands and all("symcrypt_llvm/bin/cc_wrapper.sh" in item["command"] for item in commands)
