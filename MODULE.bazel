@@ -126,33 +126,3 @@ use_repo(
 openssh_source = use_repo_rule("//openssh:sources.bzl", "openssh_source")
 
 openssh_source(name = "openssh_src")
-
-apt.install(
-    dependency_set = "openssh_package_deps",
-    packages = [
-        "libc6",
-        "libcbor0.10",
-        "libcom-err2",
-        "libcrypt1",
-        "libedit2",
-        "libfido2-1",
-        "libgcc-s1",
-        "libgssapi-krb5-2",
-        "libk5crypto3",
-        "libkeyutils1",
-        "libkrb5-3",
-        "libkrb5support0",
-        "libpcre2-8-0",
-        "libselinux1",
-        "libtinfo6",
-        "libudev1",
-        "libzstd1",
-        "zlib1g",
-    ],
-    suites = [
-        "trixie",
-        "trixie-updates",
-        "trixie-security",
-    ],
-)
-use_repo(apt, "openssh_package_deps")
