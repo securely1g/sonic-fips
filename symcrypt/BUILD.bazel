@@ -282,8 +282,3 @@ py_test(
         "@symcrypt_pyelftools//:elftools",
     ],
 )
-
-alias(
-    name = "symcrypt_openssl_deb",
-    actual = "//symcrypt/debian:symcrypt_openssl_deb",
-)
