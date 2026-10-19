@@ -1,4 +1,4 @@
-# OpenSSL source packages
+# OpenSSL runtime and debug TARs
 
 This build uses the OpenSSL and Debian source versions selected by
 [`rules/openssl.mk`](../rules/openssl.mk): **3.5.7-1~deb13u2**, with SONiC's
@@ -45,7 +45,16 @@ x86 PadLock engine, as Debian's build does.
 Runtime ELF files are stripped through the shared `sonic_deploy_tar` rule;
 separate symbols use the same build IDs. Engine plugins are additional build
 outputs, so linking a C/C++ consumer does not link every plugin into it.
-These targets do not produce Debian packages or install documentation packages.
+The OCI consumer adds these TARs directly as filesystem layers. This source
+build has no Debian package-generation step or dependency on Debian metadata
+helpers. Importing pinned Debian development libraries for compilation remains
+a separate external-input step.
+
+The TARs retain the configured paths, ownership, permissions, symlinks and
+matching symbols. Image assembly owns system integration such as the CA trust
+store and dynamic-loader cache. These TARs do not create or update dpkg records;
+a consumer that promises APT-managed replacement packages needs its own explicit
+package-management integration.
 
 The development archive reuses that same build's install tree and Debian's
 `libssl-dev.install` file selection. As in Debian's `debian/rules`, its two
@@ -86,4 +95,5 @@ Distroless package imports use the published `rules_distroless`
 `0.9.4.sonic.5` module from the maintained SONiC registry `main` endpoint.
 CI resolves its checksum-verified source, patches and overlays through Bazel;
 it no longer prepares an external Distroless override from a proposal snapshot.
-The separate build-infrastructure override remains until those tools land.
+The source build uses the published `sonic-build-infra` module declared in
+`MODULE.bazel`. Debian package-production proposals are not prerequisites.
