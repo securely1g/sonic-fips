@@ -1,4 +1,4 @@
-# OpenSSL source packages
+# OpenSSL runtime and debug TARs
 
 This build uses the OpenSSL and Debian source versions selected by
 [`rules/openssl.mk`](../rules/openssl.mk): **3.5.7-1~deb13u2**, with SONiC's
@@ -45,7 +45,16 @@ x86 PadLock engine, as Debian's build does.
 Runtime ELF files are stripped through the shared `sonic_deploy_tar` rule;
 separate symbols use the same build IDs. Engine plugins are additional build
 outputs, so linking a C/C++ consumer does not link every plugin into it.
-These targets do not produce Debian packages or install documentation packages.
+The OCI consumer adds these TARs directly as filesystem layers. This source
+build has no Debian package-generation step or dependency on Debian metadata
+helpers. Importing pinned Debian development libraries for compilation remains
+a separate external-input step.
+
+The TARs retain the configured paths, ownership, permissions, symlinks and
+matching symbols. Image assembly owns system integration such as the CA trust
+store and dynamic-loader cache. These TARs do not create or update dpkg records;
+a consumer that promises APT-managed replacement packages needs its own explicit
+package-management integration.
 
 The development archive reuses that same build's install tree and Debian's
 `libssl-dev.install` file selection. As in Debian's `debian/rules`, its two
@@ -79,3 +88,22 @@ against OpenSSL, so the core build cannot depend on their test setup. A separate
 integration test must supply their declared source-build outputs. This full-suite
 integration remains pending while that producer is migrated; a core package
 check does not establish that the full suite passed.
+
+## Shared package imports
+
+Distroless package imports use the published `rules_distroless`
+`0.9.4.sonic.6` module and the Debian GCC toolchains in `sonic-build-infra`
+`0.0.17-8baf1ad829c5095297d85148b042145b87d623a3`. Both are selected from the
+maintained SONiC registry `main` endpoint in local builds and CI. These landed
+replacements preserve normal ELF RUNPATH handling without the superseded
+transitive RPATH workaround.
+
+CI records the observed registry revision, effective Bazel configuration,
+resolved module graph and generated lockfile. Reproduce the native check with:
+
+```sh
+python3 tools/bazel/registry_inputs.py artifacts/openssl
+python3 tools/bazel/ci.py --architecture amd64 --artifacts artifacts/openssl
+```
+
+The action audit rejects Debian package production before executing the tests.
