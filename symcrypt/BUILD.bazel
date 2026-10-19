@@ -106,6 +106,16 @@ cp "$$BUILD_TMPDIR/CMakeCache.txt" "$$INSTALLDIR/evidence/provider_CMakeCache.tx
     ]
 ]
 
+# The standalone GNU launchers need their pinned Debian loader and libraries
+# even when this CMake action uses the separate Clang compiler toolchain.
+filegroup(
+    name = "gnu_tool_runtime",
+    srcs = select({
+        "@platforms//cpu:x86_64": ["@gcc-14.2.0-linux-target-x86_64-host-x86_64//:multicall_support_files"],
+        "@platforms//cpu:aarch64": ["@gcc-14.2.0-linux-target-aarch64-host-aarch64//:multicall_support_files"],
+    }),
+)
+
 _CORE_CACHE = {
     "CMAKE_BUILD_TYPE": "Release",
     "CMAKE_STRIP": "$(execpath :strip)",
@@ -132,6 +142,7 @@ cmake_variant(
         ":strip",
         ":objcopy",
         ":ld",
+        ":gnu_tool_runtime",
     ],
     cache_entries = select({
         "@platforms//cpu:x86_64": _CORE_CACHE | {"SYMCRYPT_TARGET_ARCH": "AMD64"},
