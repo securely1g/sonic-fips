@@ -2,7 +2,7 @@
 module(name = "symcrypt_consumer")
 
 bazel_dep(name = "sonic-fips", version = "0.0.2", repo_name = "sonic_fips")
-bazel_dep(name = "sonic-build-infra", version = "0.0.16-72d9705e37d0e83a072cad3eb73b75cd6cc1e4c6", repo_name = "sonic_build_infra")
+bazel_dep(name = "sonic-build-infra", version = "0.0.17-8baf1ad829c5095297d85148b042145b87d623a3", repo_name = "sonic_build_infra")
 
 local_path_override(
     module_name = "sonic-fips",

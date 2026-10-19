@@ -41,9 +41,7 @@ jobs:
           repository-cache: true
           disk-cache: symcrypt-${{ matrix.architecture }}
           cache-version: "8.5.1"
-      - name: Record the pending toolchain registration for Draft CI
-        env:
-          SONIC_BAZEL_REGISTRY_URL: https://raw.githubusercontent.com/securely1g/sonic-bazel-registry/codex/debian-gcc-toolchains
+      - name: Record maintained registry inputs
         run: python3 -B tools/bazel/registry_inputs.py artifacts/symcrypt
       - name: Build and check runtime and debug TARs
         env:
