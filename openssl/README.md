@@ -92,7 +92,7 @@ check does not establish that the full suite passed.
 ## Shared package imports
 
 Distroless package imports use the published `rules_distroless`
-`0.9.4.sonic.5` module from the maintained SONiC registry `main` endpoint.
+`0.9.4.sonic.6` module from the maintained SONiC registry `main` endpoint.
 CI resolves its checksum-verified source, patches and overlays through Bazel;
 it no longer prepares an external Distroless override from a proposal snapshot.
 The source build uses the published `sonic-build-infra` module declared in
