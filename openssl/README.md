@@ -92,23 +92,18 @@ check does not establish that the full suite passed.
 ## Shared package imports
 
 Distroless package imports use the published `rules_distroless`
-`0.9.4.sonic.5` module from the maintained SONiC registry `main` endpoint.
-CI resolves its checksum-verified source, patches and overlays through Bazel;
-it no longer prepares an external Distroless override from a proposal snapshot.
-The source build selects the merged Debian GCC toolchains in `sonic-build-infra`
-`0.0.16-0c1d31528ad50c6505117a6df7409ccebee863cf`. Until that registration reaches
-registry `main`, Draft CI explicitly selects the temporary
-`codex/debian-gcc-toolchains` catalog and Bazel Central Registry. The committed
-`.bazelrc` continues to use `main`. CI records the selected registry revision and
-writes an effective Bazel configuration that replaces the endpoint. To reproduce
-Draft CI locally:
+`0.9.4.sonic.6` module and the Debian GCC toolchains in `sonic-build-infra`
+`0.0.17-8baf1ad829c5095297d85148b042145b87d623a3`. Both are selected from the
+maintained SONiC registry `main` endpoint in local builds and CI. These landed
+replacements preserve normal ELF RUNPATH handling without the superseded
+transitive RPATH workaround.
+
+CI records the observed registry revision, effective Bazel configuration,
+resolved module graph and generated lockfile. Reproduce the native check with:
 
 ```sh
-SONIC_BAZEL_REGISTRY_URL=https://raw.githubusercontent.com/securely1g/sonic-bazel-registry/codex/debian-gcc-toolchains \
-  python3 tools/bazel/registry_inputs.py artifacts/openssl
-PATH="$PWD/artifacts/openssl/draft-bin:$PATH" \
-  python3 tools/bazel/ci.py --architecture amd64 --artifacts artifacts/openssl
+python3 tools/bazel/registry_inputs.py artifacts/openssl
+python3 tools/bazel/ci.py --architecture amd64 --artifacts artifacts/openssl
 ```
 
-Remove the temporary CI registry selection after the registration merges. Debian
-package-production proposals are not prerequisites.
+The action audit rejects Debian package production before executing the tests.

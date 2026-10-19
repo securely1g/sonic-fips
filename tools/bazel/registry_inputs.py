@@ -1,25 +1,19 @@
 #!/usr/bin/env python3
-"""Record one SONiC registry endpoint and prepare Draft CI's Bazel command."""
+"""Record the maintained SONiC registry inputs used by local builds and CI."""
 
 import argparse
 import json
-import os
 from pathlib import Path
 import re
-import shlex
-import shutil
 import subprocess
 
 
 ROOT = Path(__file__).resolve().parents[2]
 MAIN = "https://raw.githubusercontent.com/securely1g/sonic-bazel-registry/main"
-DRAFT = "https://raw.githubusercontent.com/securely1g/sonic-bazel-registry/codex/debian-gcc-toolchains"
 
 
 def record(artifacts):
-    registry = os.environ.get("SONIC_BAZEL_REGISTRY_URL", MAIN)
-    if registry not in (MAIN, DRAFT):
-        raise ValueError("Expected main or the reviewed Debian GCC registration branch")
+    registry = MAIN
     configuration = (ROOT / ".bazelrc").read_text()
     endpoints = [line for line in configuration.splitlines()
                  if "--registry=" in line and "securely1g/sonic-bazel-registry/" in line]
@@ -36,20 +30,6 @@ def record(artifacts):
     (artifacts / "declared.bazelrc").write_text(configuration)
     effective = artifacts.resolve() / "effective.bazelrc"
     effective.write_text(configuration.replace(MAIN, registry))
-    if registry != MAIN:
-        binary = shutil.which("bazel")
-        if not binary:
-            raise ValueError("Install Bazel before selecting Draft inputs")
-        commands = artifacts.resolve() / "draft-bin"
-        commands.mkdir(exist_ok=True)
-        wrapper = commands / "bazel"
-        wrapper.write_text("#!/bin/sh\nexec " + shlex.quote(binary) +
-                           " --noworkspace_rc --bazelrc=" + shlex.quote(str(effective)) +
-                           ' "$@"\n')
-        wrapper.chmod(0o755)
-        if os.environ.get("GITHUB_PATH"):
-            with open(os.environ["GITHUB_PATH"], "a") as path_file:
-                path_file.write(str(commands) + "\n")
     (artifacts / "registry-inputs.json").write_text(json.dumps({
         "declared_registry": MAIN, "registry": registry,
         "observed_revision": revision[0], "draft_validation": registry != MAIN,
