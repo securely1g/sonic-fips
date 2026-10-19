@@ -50,10 +50,16 @@ ELF/debug pairs. It loads the installed libraries and SPAKE plugin with the
 source OpenSSL TAR, exercises random-byte generation, Kerberos context
 creation and GSS mechanism discovery, and checks GDB source lookup.
 
-These targets produce TARs; they do not produce Debian packages or migrate
-KDC/server packages. The historical GSS package maintainer scripts handle old
-installation upgrades and purge behavior; those operations remain the image
-installer's responsibility. The final image must independently validate its
-complete installed dependency set, provider configuration and service behavior.
+OCI consumers add these runtime TARs directly and collect their matching
+`.debug_symbols` outputs in the debug layer. This path needs no DEB generation,
+Debian metadata helpers or synthetic installed-package records, and does not
+migrate KDC/server packages.
+
+The runtime links and GSS mechanism directory are explicit TAR entries. The
+historical GSS maintainer scripts handle old installation upgrades and purge;
+assembling a fresh OCI filesystem does not perform those package lifecycle
+operations. The final image must independently validate library loading, its
+complete dependency set, provider configuration and service behavior. Consumers
+retaining APT-managed replacement packages need their own integration contract.
 Native AMD64 and ARM64 CI retains packages, source checksums, module resolution,
 action audits and test evidence. This is not a FIPS certification claim.

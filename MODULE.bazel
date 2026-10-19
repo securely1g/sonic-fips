@@ -115,18 +115,3 @@ use_repo(apt, "krb5_deps")
 krb5_source = use_repo_rule("//krb5:sources.bzl", "krb5_source")
 
 krb5_source(name = "krb5_src")
-
-apt.install(
-    dependency_set = "krb5_package_deps",
-    packages = [
-        "libc6",
-        "libcom-err2",
-        "libkeyutils1",
-    ],
-    suites = [
-        "trixie",
-        "trixie-updates",
-        "trixie-security",
-    ],
-)
-use_repo(apt, "krb5_package_deps")

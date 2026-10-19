@@ -199,9 +199,3 @@ py_test(
     ]],
     deps = ["//openssl:package_test_utils"],
 )
-
-# Source-owned Debian packages share the existing compiled runtime payloads.
-[alias(
-    name = package.replace("-", "_") + "_deb",
-    actual = "//krb5/debian:" + package.replace("-", "_") + "_deb",
-) for package in _LIBRARIES]
