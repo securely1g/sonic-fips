@@ -1,6 +1,6 @@
 # SymCrypt and its OpenSSL engine/provider
 
-This package follows `src/SymCrypt-OpenSSL-Debian/Makefile` for native Trixie
+The Bazel build follows `src/SymCrypt-OpenSSL-Debian/Makefile` for native Trixie
 AMD64 and ARM64. It builds the exact public submodules selected by sonic-fips:
 
 | Input | Revision |
@@ -20,13 +20,17 @@ produced by these targets.
 | --- | --- |
 | `//symcrypt:core` | Declared core headers, shared library and upstream unit-test executable |
 | `//symcrypt:provider` | OpenSSL engine/provider linked with `//openssl:build` and the source-built core |
-| `//symcrypt:runtime` | Installed runtime TAR for the native `symcrypt-openssl` package |
+| `//symcrypt:runtime` | Runtime filesystem TAR for OCI layers |
 | `//symcrypt:runtime.debug_symbols` | Matching symbols for all three installed ELF files |
 | `//symcrypt:package_test` | Installed files, symbols, self-tests, integrity enforcement and OpenSSL consumers |
 
 The runtime keeps native library names and engine/provider locations under
 `/usr/lib/<multiarch>`, including the original four symbolic links and `/etc/ssl`.
-The package includes all three source-license notices.
+The runtime TAR includes all three source-license notices.
+
+OCI consumers take `//symcrypt:runtime` directly and collect the matching symbols
+through `//symcrypt:runtime.debug_symbols`. No DEB archive or Debian metadata
+generator is needed. The original Make packaging remains available separately.
 
 ## Compiler and build behavior
 
@@ -42,9 +46,9 @@ macro because upstream's own module extension accepts only a root module. This
 keeps the same maintained compiler implementation usable when an image consumes
 `sonic-fips` as a dependency, without registering LLVM for other components.
 
-Clang uses the same pinned Debian sysroot as SONiC's GCC toolchain, including the
-GCC development-library runtime dependencies. The core preserves upstream's
-warning policy by removing LLVM's additional `-Wall`, `-Wthread-safety`, and
+Clang and GCC share the published multiarch `sonic_sysroot` repository, including
+the pinned Debian headers and GCC development-library runtime dependencies.
+The core preserves upstream's warning policy by removing LLVM's additional `-Wall`, `-Wthread-safety`, and
 `-Wself-assign` defaults before applying the unchanged upstream CMake settings.
 ASM, release optimization, FIPS self-tests, integrity postprocessing, binary
 stripping and the upstream unit tests remain enabled. ARM64 retains

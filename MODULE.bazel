@@ -96,15 +96,7 @@ git_override(
 bazel_dep(name = "toolchains_llvm", version = "1.11.2")
 
 sysroots = use_extension("@sonic_build_infra//toolchains/sysroot:extensions.bzl", "sysroots")
-sysroots.debian(
-    name = "symcrypt_sysroot_amd64",
-    architecture = "amd64",
-)
-sysroots.debian(
-    name = "symcrypt_sysroot_arm64",
-    architecture = "arm64",
-)
-use_repo(sysroots, "symcrypt_sysroot_amd64", "symcrypt_sysroot_arm64")
+use_repo(sysroots, "sonic_sysroot")
 
 # Core SymCrypt explicitly chooses Clang in the native recipe. Do not register
 # it globally: its cmake_variant target selects this toolchain locally.
@@ -122,17 +114,3 @@ symcrypt_openssl_source(name = "symcrypt_openssl_src")
 pyelftools_source = use_repo_rule("//symcrypt:sources.bzl", "pyelftools_source")
 
 pyelftools_source(name = "symcrypt_pyelftools")
-
-apt.install(
-    dependency_set = "symcrypt_package_deps",
-    packages = [
-        "libc6",
-        "libgcc-s1",
-    ],
-    suites = [
-        "trixie",
-        "trixie-updates",
-        "trixie-security",
-    ],
-)
-use_repo(apt, "symcrypt_package_deps")
