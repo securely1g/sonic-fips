@@ -11,6 +11,8 @@ _PROVIDER_CACHE = {
     # CMake build-RPATH padding that survives its install-time RPATH removal.
     "CMAKE_SKIP_RPATH": "ON",
     "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+    # Keep the declared GCC toolchain when the upstream ARM platform file runs.
+    "SCOSSL_USE_DEFAULT_COMPILER": "ON",
     "CMAKE_INSTALL_LIBDIR": "lib",
     "CMAKE_INSTALL_INCLUDEDIR": "include",
     "OPENSSL_ENGINES": "lib",
