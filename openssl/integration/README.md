@@ -45,7 +45,7 @@ the declared BSD tar toolchain. It does not build or install Debian packages.
 
 
 A cross-testing consumer can set
-`--@sonic-fips//openssl/integration:recipe_runner=//path:target-executor`
-to an executable that accepts a target command and its arguments. Each TAP
-recipe then runs with the target's declared Perl, its upstream modules, and the
-consumer's target runtime. Native builds use direct execution.
+`--@sonic-fips//openssl/integration:recipe_perl=//path:target-perl` to an
+executable that runs Perl in its target runtime. TAP passes the original
+recipe and arguments, including OpenSSL's source modules. Native builds use
+the Perl supplied by the declared configure toolchain.
