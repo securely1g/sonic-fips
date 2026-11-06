@@ -20,6 +20,14 @@ directory with `-I`. The sealed core also sits beside the test build's shared
 libraries, where OpenSSL's existing loader wrapper can find it even after Perl
 clears inherited library paths. Neither adapter changes a crypto test.
 
+Cross-test consumers can select the target Perl executable with
+`--@sonic-fips//openssl/integration:recipe_perl=//path:target-perl`.
+TAP passes OpenSSL's source module path with `-I` and the original recipe
+arguments. When starting a separate target Perl runtime, clear `PERLLIB`,
+`PERL5LIB`, and `PERL5OPT` so it loads its own modules. The AF_ALG recipe
+also requires Linux native asynchronous I/O in the target runtime. Native
+builds use the Perl supplied by the declared configure toolchain.
+
 Production runtime/debug TARs keep the same build arguments, targets and outputs; their
 configuration was moved into `//openssl:build.bzl` so the test cannot silently
 choose a different algorithm set.
@@ -42,10 +50,3 @@ own integration validation.
 
 The suite extracts its plugin inputs directly from the SymCrypt runtime TAR with
 the declared BSD tar toolchain. It does not build or install Debian packages.
-
-
-A cross-testing consumer can set
-`--@sonic-fips//openssl/integration:recipe_perl=//path:target-perl` to an
-executable that runs Perl in its target runtime. TAP passes the original
-recipe and arguments, including OpenSSL's source modules. Native builds use
-the Perl supplied by the declared configure toolchain.
