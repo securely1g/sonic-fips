@@ -277,6 +277,7 @@ py_test(
     srcs = ["source_openssl_test.py"],
     args = [
         "$(rootpath @openssh_src//:source.json)",
+        "$(rootpath @sonic_build_infra//tools/build_tools:configure_runtime)/bin/pkgconf",
         "$(rootpath //openssl:libssl3t64_pkg)",
         "$(rootpath //openssl:libssl_dev_pkg)",
         "$(rootpath //openssl:openssl_pkg)",
@@ -287,6 +288,7 @@ py_test(
         "//openssl:openssl_pkg",
         "@openssh_src//:source.json",
         "@openssh_src//:sources",
+        "@sonic_build_infra//tools/build_tools:configure_runtime",
     ],
     tags = ["local"],
     deps = ["//openssl:package_test_utils"],
