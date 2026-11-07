@@ -12,6 +12,7 @@ import unittest
 ADAPTER = Path(sys.argv.pop(1)).resolve()
 COMPONENT = sys.argv.pop(1)
 assert COMPONENT in ('openssh', 'krb5')
+PKGCONF = Path(sys.argv.pop(1)).resolve() if COMPONENT == 'openssh' else None
 
 
 class ConfigureFlagsTest(unittest.TestCase):
@@ -81,6 +82,9 @@ all:
                    'AUTOHEADER': tools['autoheader'],
                    'CFLAGS': '-O2 -g -ffile-prefix-map=' + str(root) + '=.'}
             env.pop('LD_LIBRARY_PATH', None)
+            if COMPONENT == 'openssh':
+                env.update(EXT_BUILD_ROOT=str(root), BAZEL_PKGCONFIG_FILES='',
+                           PKGCONFIG=str(PKGCONF))
             if COMPONENT == 'krb5':
                 # The adapter discovers this directory before writing its
                 # original crypto-test target. This fixture does not run or
@@ -151,6 +155,93 @@ all:
                                  capture_output=True, text=True)
             self.assertNotEqual(bad.returncode, 0)
             self.assertIn('CPPFLAGS must contain GCC preprocessor options', bad.stderr)
+
+
+@unittest.skipUnless(COMPONENT == 'openssh', 'OpenSSH declared libedit metadata only')
+class ConfigurePkgconfigTest(unittest.TestCase):
+    """Run the actual metadata staging and pkgconf, without compiling code."""
+
+    LIBEDIT = '''prefix=/usr
+libdir=${prefix}/lib/target
+includedir=${prefix}/include
+Name: libedit
+Description: Declared fixture for OpenSSH's libedit query
+Version: 1
+Requires.private: tinfo
+Libs: -L${libdir} -ledit
+Cflags: -I${includedir}/editline
+'''
+    TINFO = '''prefix=/usr
+libdir=${prefix}/lib/target
+Name: tinfo
+Description: Declared private dependency fixture
+Version: 1
+Libs: -L${libdir} -ltinfo
+'''
+
+    def run_metadata(self, files, query):
+        adapter = ADAPTER.read_text()
+        start = adapter.index('\n', adapter.index('"$AUTOHEADER"')) + 1
+        end = adapter.index('# Autoconf runs target conftest ELFs.', start)
+        with tempfile.TemporaryDirectory(prefix='openssh-pkgconfig-') as temporary:
+            root = Path(temporary)
+            for relative, content in files.items():
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content)
+            host = root / 'host'
+            host.mkdir()
+            (host / 'libedit.pc').write_text(self.LIBEDIT.replace('-ledit', '-lHOST_POISON'))
+            # Staging uses only the established shell/filesystem tools. The
+            # declared pkgconf launcher is the sole metadata executable.
+            commands = root / 'commands'
+            commands.mkdir()
+            for name in ('mkdir', 'basename', 'cmp', 'ln'):
+                executable = shutil.which(name)
+                self.assertIsNotNone(executable)
+                (commands / name).symlink_to(executable)
+            env = {'PATH': str(commands), 'LC_ALL': 'C',
+                   'EXT_BUILD_ROOT': str(root), 'EXT_BUILD_DEPS': str(root / 'deps'),
+                   'BAZEL_PKGCONFIG_FILES': ' '.join(files), 'PKGCONFIG': str(PKGCONF),
+                   'PKG_CONFIG_LIBDIR': str(host), 'PKG_CONFIG_PATH': str(host)}
+            script = 'set -eu\n' + adapter[start:end] + query + '\n'
+            result = subprocess.run(['/bin/sh', '-s'], input=script, text=True,
+                                    cwd=root, env=env, capture_output=True, timeout=5)
+            return result, str(root / 'deps')
+
+    def test_declared_metadata_avoids_fallback_and_host_paths(self):
+        result, deps = self.run_metadata(
+            {'declared/libedit.pc': self.LIBEDIT, 'declared/tinfo.pc': self.TINFO},
+            '$PKGCONFIG --exists libedit\n'
+            '$PKGCONFIG --libs libedit\n'
+            '$PKGCONFIG --cflags libedit\n'
+            '$PKGCONFIG --static --libs libedit')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        dynamic, headers, static = result.stdout.splitlines()
+        self.assertIn('-ledit', dynamic)
+        self.assertIn('-L' + deps + '/lib', dynamic)
+        self.assertIn('-I' + deps + '/include/usr/include/editline', headers)
+        self.assertIn('-ltinfo', static)
+        for forbidden in ('-lcurses', 'HOST_POISON', '/usr/lib/target'):
+            self.assertNotIn(forbidden, result.stdout)
+
+    def test_missing_declared_metadata_does_not_use_host(self):
+        result, _ = self.run_metadata({}, '$PKGCONFIG --exists libedit')
+        self.assertNotEqual(result.returncode, 0)
+
+    def test_duplicate_metadata_must_match(self):
+        for conflict in (False, True):
+            with self.subTest(conflict=conflict):
+                duplicate = self.LIBEDIT.replace('-ledit', '-lWRONG') if conflict else self.LIBEDIT
+                result, _ = self.run_metadata(
+                    {'declared/libedit.pc': self.LIBEDIT, 'duplicate/libedit.pc': duplicate,
+                     'declared/tinfo.pc': self.TINFO},
+                    '$PKGCONFIG --libs libedit')
+                if conflict:
+                    self.assertNotEqual(result.returncode, 0)
+                else:
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn('-ledit', result.stdout)
 
 
 @unittest.skipUnless(COMPONENT == 'openssh', 'OpenSSH link diagnostics only')

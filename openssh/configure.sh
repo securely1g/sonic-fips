@@ -14,9 +14,23 @@ export CPPFLAGS="-Wp,@$cppflags_file"
 # Force regeneration: a prior invocation may have patched the cached output.
 "$AUTOCONF" --force
 "$AUTOHEADER"
-mkdir -p .pkgconfig-empty
-export PKG_CONFIG_LIBDIR="$PWD/.pkgconfig-empty"
+# Use libedit's declared metadata instead of configure's guessed -lcurses
+# fallback. Reuse the Kerberos adapter's isolated metadata staging; CcInfo
+# continues to supply the actual target headers and libraries.
+pcdir="$PWD/.bazel-pkgconfig"
+mkdir -p "$pcdir"
+for metadata in $BAZEL_PKGCONFIG_FILES; do
+    source="$EXT_BUILD_ROOT/$metadata"
+    target="$pcdir/$(basename "$metadata")"
+    if [ -e "$target" ]; then
+        cmp "$source" "$target"
+    else
+        ln -s "$source" "$target"
+    fi
+done
+export PKG_CONFIG_LIBDIR="$pcdir"
 export PKG_CONFIG_PATH=
+export PKGCONFIG="$PKGCONFIG --define-variable=prefix=$EXT_BUILD_DEPS --define-variable=libdir=$EXT_BUILD_DEPS/lib --define-variable=includedir=$EXT_BUILD_DEPS/include/usr/include"
 # Autoconf runs target conftest ELFs. Use the matching declared loader and
 # source-built OpenSSL before Debian dependencies, without exporting target
 # libc into host shell/coreutils processes or weakening feature probes.
