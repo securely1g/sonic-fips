@@ -179,7 +179,7 @@ Version: 1
 Libs: -L${libdir} -ltinfo
 '''
 
-    def run_metadata(self, files, query, tool_with_spaces=False):
+    def run_metadata(self, files, query, tool_with_spaces=False, inherited_system_cflags=False):
         adapter = ADAPTER.read_text()
         start = adapter.index('\n', adapter.index('"$AUTOHEADER"')) + 1
         end = adapter.index('# Autoconf runs target conftest ELFs.', start)
@@ -205,14 +205,55 @@ Libs: -L${libdir} -ltinfo
                 pkgconf = root / 'declared tool with spaces' / 'pkgconf'
                 pkgconf.parent.mkdir()
                 pkgconf.symlink_to(PKGCONF)
+            dependency = root / 'deps'
             env = {'PATH': str(commands), 'LC_ALL': 'C',
-                   'EXT_BUILD_ROOT': str(root), 'EXT_BUILD_DEPS': str(root / 'deps'),
+                   'EXT_BUILD_ROOT': str(root), 'EXT_BUILD_DEPS': str(dependency),
                    'BAZEL_PKGCONFIG_FILES': ' '.join(files), 'PKGCONFIG': str(pkgconf),
                    'PKG_CONFIG_LIBDIR': str(host), 'PKG_CONFIG_PATH': str(host)}
+            if inherited_system_cflags:
+                env.update(PKG_CONFIG_ALLOW_SYSTEM_CFLAGS='1',
+                           PKG_CONFIG_SYSTEM_INCLUDE_PATH='/unrelated-probe/include')
             script = 'set -eu\n' + adapter[start:end] + query + '\n'
             result = subprocess.run(['/bin/sh', '-s'], input=script, text=True,
                                     cwd=root, env=env, capture_output=True, timeout=5)
-            return result, str(root / 'deps')
+            return result, str(dependency)
+
+    def test_shared_sdk_include_does_not_override_source_headers(self):
+        # Actual libedit-dev 3.1-20250104-1 metadata includes both the generic
+        # SDK root and /editline. The generic -I outranks source CcInfo's
+        # -isystem even when upstream also passes -I for that same source dir.
+        metadata = '''prefix=/usr
+exec_prefix=${prefix}
+libdir=${prefix}/lib/x86_64-linux-gnu
+includedir=${prefix}/include
+Name: libedit
+Description: command line editor library
+Version: 3.1
+Requires:
+Libs: -L${libdir} -ledit
+Libs.private: -ltermcap -lbsd
+Cflags: -I${includedir} -I${includedir}/editline
+'''
+        for inherited in (False, True):
+            for spaces in (False, True):
+                with self.subTest(inherited=inherited, spaces=spaces):
+                    result, deps = self.run_metadata(
+                        {'declared/libedit.pc': metadata},
+                        '"$PKGCONFIG" --cflags libedit\n'
+                        '"$PKGCONFIG" --libs libedit\n'
+                        '"$PKGCONFIG" --static --libs libedit\n'
+                        'printf "%s|%s\\n" "${PKG_CONFIG_ALLOW_SYSTEM_CFLAGS-unset}" '
+                        '"${PKG_CONFIG_SYSTEM_INCLUDE_PATH-unset}"',
+                        tool_with_spaces=spaces,
+                        inherited_system_cflags=inherited)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    headers, libraries, static, parent = result.stdout.splitlines()
+                    self.assertEqual(shlex.split(headers),
+                                     ['-I' + deps + '/include/usr/include/editline'])
+                    self.assertEqual(shlex.split(libraries), ['-L' + deps + '/lib', '-ledit'])
+                    self.assertEqual(shlex.split(static),
+                                     ['-L' + deps + '/lib', '-ledit', '-ltermcap', '-lbsd'])
+                    self.assertEqual(parent, '1|/unrelated-probe/include' if inherited else 'unset|unset')
 
     def test_declared_metadata_avoids_fallback_and_host_paths(self):
         result, deps = self.run_metadata(

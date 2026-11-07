@@ -33,9 +33,14 @@ export PKG_CONFIG_PATH=
 # OpenSSH invokes "$PKGCONFIG" as one executable, not a shell command.
 # Keep the declared tool and its prefix overrides separate, including paths
 # with spaces. The launcher inherits only the isolated metadata lookup above.
+# CcInfo already supplies the shared SDK root as a system include. Do not let
+# libedit's generic -I promote its OpenSSL headers ahead of the source owner;
+# retain package-specific includes and keep this filtering local to pkgconf.
 export SONIC_LIBEDIT_PKGCONF="$PKGCONFIG"
 pkgconf_launcher="$PWD/.bazel-pkgconf"
 printf '%s\n' '#!/bin/sh' 'set -eu' \
+    'unset PKG_CONFIG_ALLOW_SYSTEM_CFLAGS' \
+    'export PKG_CONFIG_SYSTEM_INCLUDE_PATH="$EXT_BUILD_DEPS/include/usr/include"' \
     'exec "$SONIC_LIBEDIT_PKGCONF" "--define-variable=prefix=$EXT_BUILD_DEPS" "--define-variable=libdir=$EXT_BUILD_DEPS/lib" "--define-variable=includedir=$EXT_BUILD_DEPS/include/usr/include" "$@"' \
     > "$pkgconf_launcher"
 chmod +x "$pkgconf_launcher"
