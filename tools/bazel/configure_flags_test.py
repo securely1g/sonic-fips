@@ -153,5 +153,102 @@ all:
             self.assertIn('CPPFLAGS must contain GCC preprocessor options', bad.stderr)
 
 
+@unittest.skipUnless(COMPONENT == 'openssh', 'OpenSSH link diagnostics only')
+class ConfigureDiagnosticsTest(unittest.TestCase):
+    """Exercise the actual failure wrapper with shell-only configure fixtures."""
+
+    def run_diagnostic(self, log, status=37, broken_stderr=False):
+        adapter = ADAPTER.read_text()
+        start = adapter.index('report_libedit_link_failure() (')
+        end = adapter.index('# Match Debian', start)
+        with tempfile.TemporaryDirectory(prefix='openssh-link-diagnostic-') as temporary:
+            root = Path(temporary)
+            if log is not None:
+                (root / 'config.log').write_text(log)
+            (root / 'config.h').write_text('untouched\n')
+            configure = root / 'configure'
+            configure.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > arguments\nexit ' + str(status) + '\n')
+            configure.chmod(0o755)
+            script = 'set -eu\n' + adapter[start:end] + 'printf "post-configure\\n"\n'
+            command = ['/bin/sh', '-s', '--', '--with-libedit', '--with-ssl-dir=/declared/openssl']
+            read_fd = write_fd = None
+            try:
+                if broken_stderr:
+                    read_fd, write_fd = os.pipe()
+                    os.close(read_fd)
+                    read_fd = None
+                result = subprocess.run(command, input=script, text=True, cwd=root,
+                                        env={'PATH': '/nonexistent', 'LC_ALL': 'C'},
+                                        stdout=subprocess.PIPE,
+                                        stderr=write_fd if broken_stderr else subprocess.PIPE,
+                                        timeout=5)
+            finally:
+                if write_fd is not None:
+                    os.close(write_fd)
+            arguments = (root / 'arguments').read_text().splitlines()
+            self.assertEqual(arguments[:2], command[-2:])
+            self.assertEqual(len(arguments), 3)
+            self.assertIn('Debian-7+fips', arguments[2])
+            self.assertEqual((root / 'config.h').read_text(), 'untouched\n')
+            return result
+
+    @staticmethod
+    def failure_log(command='configure:105: cc -o conftest -ledit >&5'):
+        return ('ENV_BEFORE=private-value\n'
+                'configure:100: checking for el_init in -ledit\n' + command + '\n'
+                "/declared/ld: libedit.so: undefined reference to `tgetent'\n"
+                'configure:105: $? = 1\n'
+                'configure: failed program was:\n'
+                '| SOURCE_PROGRAM_MUST_NOT_BE_PRINTED\n'
+                'configure:110: result: no\n'
+                '## Cache variables. ##\n'
+                'ac_cv_private=PRIVATE_CACHE_VALUE\n'
+                'ENV_AFTER=private-value\n')
+
+    def test_failed_link_excerpt_and_exit(self):
+        result = self.run_diagnostic(self.failure_log())
+        self.assertEqual(result.returncode, 37)
+        self.assertIn('undefined reference', result.stderr)
+        self.assertIn('cc -o conftest -ledit', result.stderr)
+        self.assertIn('$? = 1', result.stderr)
+        self.assertEqual(result.stdout, '')
+        for private in ['ENV_BEFORE', 'SOURCE_PROGRAM', 'Cache variables', 'PRIVATE_CACHE', 'ENV_AFTER']:
+            self.assertNotIn(private, result.stderr)
+
+    def test_long_command_keeps_following_link_error(self):
+        command = 'configure:105: cc -o conftest ' + '-L/declared/library ' * 6000
+        result = self.run_diagnostic(self.failure_log(command))
+        self.assertEqual(result.returncode, 37)
+        self.assertIn('[line clipped]', result.stderr)
+        self.assertIn('undefined reference', result.stderr)
+        self.assertLess(len(result.stderr.encode()), 17000)
+        self.assertLessEqual(max(map(len, result.stderr.splitlines())), 2063)
+
+    def test_success_and_unrelated_or_incomplete_logs_are_quiet(self):
+        for log in [None, '', 'ENV_ONLY=private\n',
+                    self.failure_log().replace('result: no', 'result: yes'),
+                    self.failure_log().split('configure:110: result: no')[0]]:
+            with self.subTest(log=log):
+                result = self.run_diagnostic(log)
+                self.assertEqual(result.returncode, 37)
+                self.assertEqual(result.stderr, '')
+        success = self.run_diagnostic(self.failure_log(), status=0)
+        self.assertEqual(success.returncode, 0)
+        self.assertEqual(success.stderr, '')
+        self.assertEqual(success.stdout, 'post-configure\n')
+
+    def test_limits_sensitive_lines_and_broken_output(self):
+        command = ('configure:105: cc TOKEN=must-not-leak\n'
+                   'configure:106: https://private.invalid/must-not-leak\n' +
+                   ('/declared/ld: undefined reference ' + 'x' * 2000 + '\n') * 80)
+        result = self.run_diagnostic(self.failure_log(command))
+        self.assertEqual(result.returncode, 37)
+        self.assertNotIn('must-not-leak', result.stderr)
+        self.assertLess(len(result.stderr.encode()), 17000)
+        self.assertLessEqual(len(result.stderr.splitlines()), 33)
+        broken = self.run_diagnostic(self.failure_log(), broken_stderr=True)
+        self.assertEqual(broken.returncode, 37)
+
+
 if __name__ == '__main__':
     unittest.main()
