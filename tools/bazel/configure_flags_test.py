@@ -179,7 +179,7 @@ Version: 1
 Libs: -L${libdir} -ltinfo
 '''
 
-    def run_metadata(self, files, query):
+    def run_metadata(self, files, query, tool_with_spaces=False):
         adapter = ADAPTER.read_text()
         start = adapter.index('\n', adapter.index('"$AUTOHEADER"')) + 1
         end = adapter.index('# Autoconf runs target conftest ELFs.', start)
@@ -196,13 +196,18 @@ Libs: -L${libdir} -ltinfo
             # declared pkgconf launcher is the sole metadata executable.
             commands = root / 'commands'
             commands.mkdir()
-            for name in ('mkdir', 'basename', 'cmp', 'ln'):
+            for name in ('mkdir', 'basename', 'cmp', 'ln', 'chmod'):
                 executable = shutil.which(name)
                 self.assertIsNotNone(executable)
                 (commands / name).symlink_to(executable)
+            pkgconf = PKGCONF
+            if tool_with_spaces:
+                pkgconf = root / 'declared tool with spaces' / 'pkgconf'
+                pkgconf.parent.mkdir()
+                pkgconf.symlink_to(PKGCONF)
             env = {'PATH': str(commands), 'LC_ALL': 'C',
                    'EXT_BUILD_ROOT': str(root), 'EXT_BUILD_DEPS': str(root / 'deps'),
-                   'BAZEL_PKGCONFIG_FILES': ' '.join(files), 'PKGCONFIG': str(PKGCONF),
+                   'BAZEL_PKGCONFIG_FILES': ' '.join(files), 'PKGCONFIG': str(pkgconf),
                    'PKG_CONFIG_LIBDIR': str(host), 'PKG_CONFIG_PATH': str(host)}
             script = 'set -eu\n' + adapter[start:end] + query + '\n'
             result = subprocess.run(['/bin/sh', '-s'], input=script, text=True,
@@ -212,10 +217,10 @@ Libs: -L${libdir} -ltinfo
     def test_declared_metadata_avoids_fallback_and_host_paths(self):
         result, deps = self.run_metadata(
             {'declared/libedit.pc': self.LIBEDIT, 'declared/tinfo.pc': self.TINFO},
-            '$PKGCONFIG --exists libedit\n'
-            '$PKGCONFIG --libs libedit\n'
-            '$PKGCONFIG --cflags libedit\n'
-            '$PKGCONFIG --static --libs libedit')
+            '"$PKGCONFIG" --exists libedit\n'
+            '"$PKGCONFIG" --libs libedit\n'
+            '"$PKGCONFIG" --cflags libedit\n'
+            '"$PKGCONFIG" --static --libs libedit')
         self.assertEqual(result.returncode, 0, result.stderr)
         dynamic, headers, static = result.stdout.splitlines()
         self.assertIn('-ledit', dynamic)
@@ -225,8 +230,23 @@ Libs: -L${libdir} -ltinfo
         for forbidden in ('-lcurses', 'HOST_POISON', '/usr/lib/target'):
             self.assertNotIn(forbidden, result.stdout)
 
+    def test_upstream_quoted_executable_and_argument_boundaries(self):
+        # Match OpenSSH's quoted executable call, rather than splitting a
+        # command string. A tool path with spaces must remain one filename.
+        result, deps = self.run_metadata(
+            {'declared/libedit.pc': self.LIBEDIT, 'declared/tinfo.pc': self.TINFO},
+            '"$PKGCONFIG" --exists libedit\n'
+            '"$PKGCONFIG" --define-variable=quoted="one value" --variable=quoted libedit\n'
+            '"$PKGCONFIG" --libs libedit', tool_with_spaces=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        quoted, libraries = result.stdout.splitlines()
+        self.assertEqual(quoted, 'one value')
+        self.assertIn('-L' + deps + '/lib', libraries)
+        self.assertIn('-ledit', libraries)
+        self.assertNotIn('-lcurses', libraries)
+
     def test_missing_declared_metadata_does_not_use_host(self):
-        result, _ = self.run_metadata({}, '$PKGCONFIG --exists libedit')
+        result, _ = self.run_metadata({}, '"$PKGCONFIG" --exists libedit')
         self.assertNotEqual(result.returncode, 0)
 
     def test_duplicate_metadata_must_match(self):
@@ -236,7 +256,7 @@ Libs: -L${libdir} -ltinfo
                 result, _ = self.run_metadata(
                     {'declared/libedit.pc': self.LIBEDIT, 'duplicate/libedit.pc': duplicate,
                      'declared/tinfo.pc': self.TINFO},
-                    '$PKGCONFIG --libs libedit')
+                    '"$PKGCONFIG" --libs libedit')
                 if conflict:
                     self.assertNotEqual(result.returncode, 0)
                 else:

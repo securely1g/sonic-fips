@@ -30,7 +30,16 @@ for metadata in $BAZEL_PKGCONFIG_FILES; do
 done
 export PKG_CONFIG_LIBDIR="$pcdir"
 export PKG_CONFIG_PATH=
-export PKGCONFIG="$PKGCONFIG --define-variable=prefix=$EXT_BUILD_DEPS --define-variable=libdir=$EXT_BUILD_DEPS/lib --define-variable=includedir=$EXT_BUILD_DEPS/include/usr/include"
+# OpenSSH invokes "$PKGCONFIG" as one executable, not a shell command.
+# Keep the declared tool and its prefix overrides separate, including paths
+# with spaces. The launcher inherits only the isolated metadata lookup above.
+export SONIC_LIBEDIT_PKGCONF="$PKGCONFIG"
+pkgconf_launcher="$PWD/.bazel-pkgconf"
+printf '%s\n' '#!/bin/sh' 'set -eu' \
+    'exec "$SONIC_LIBEDIT_PKGCONF" "--define-variable=prefix=$EXT_BUILD_DEPS" "--define-variable=libdir=$EXT_BUILD_DEPS/lib" "--define-variable=includedir=$EXT_BUILD_DEPS/include/usr/include" "$@"' \
+    > "$pkgconf_launcher"
+chmod +x "$pkgconf_launcher"
+export PKGCONFIG="$pkgconf_launcher"
 # Autoconf runs target conftest ELFs. Use the matching declared loader and
 # source-built OpenSSL before Debian dependencies, without exporting target
 # libc into host shell/coreutils processes or weakening feature probes.
