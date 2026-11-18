@@ -1,6 +1,6 @@
 module(
     name = "sonic-fips",
-    version = "0.0.6",
+    version = "0.0.7",
     bazel_compatibility = [
         ">=8.5.1",
         "<=8.5.1",
@@ -10,10 +10,10 @@ module(
 bazel_dep(name = "platforms", version = "1.1.0")
 bazel_dep(name = "bazel_skylib", version = "1.9.2")
 bazel_dep(name = "rules_cc", version = "0.2.20")
-bazel_dep(name = "rules_distroless", version = "0.9.4.sonic.20")
+bazel_dep(name = "rules_distroless", version = "0.9.4.sonic.22")
 bazel_dep(name = "rules_foreign_cc", version = "0.16.0.sonic.1")
 bazel_dep(name = "rules_python", version = "1.9.0.sonic.1")
-bazel_dep(name = "sonic-build-infra", version = "0.0.37-316e298e77ab5cfa69af9b0c05ec24d5d94bbe1e", repo_name = "sonic_build_infra")
+bazel_dep(name = "sonic-build-infra", version = "0.0.38-0baa4acc9eac9ccc793b81104b1580d530271cbe", repo_name = "sonic_build_infra")
 bazel_dep(name = "tar.bzl", version = "0.10.5.sonic.2")
 
 single_version_override(
